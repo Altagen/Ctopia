@@ -1,0 +1,256 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    background-color: #060810;
+    color: #e2e8f0;
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.15);
+  }
+}
+
+@layer utilities {
+  .glass {
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
+
+  .glass-hover {
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  }
+
+  .glass-hover:hover {
+    background: rgba(255, 255, 255, 0.055);
+    border-color: rgba(59, 130, 246, 0.2);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  }
+
+  /* Blue glow for interactive elements */
+  .glow-blue {
+    box-shadow: 0 0 16px rgba(59, 130, 246, 0.3);
+  }
+
+  /* Orange accent glow */
+  .glow-orange {
+    box-shadow: 0 0 16px rgba(249, 115, 22, 0.3);
+  }
+
+  /* Gradient text matching logo */
+  .gradient-text {
+    background: linear-gradient(135deg, #3b82f6, #f97316);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
+
+/* Background blobs — palette du logo (bleu + orange) */
+.blob-1 {
+  position: fixed;
+  width: 700px;
+  height: 700px;
+  background: radial-gradient(circle, rgba(29, 78, 216, 0.14), transparent 70%);
+  border-radius: 50%;
+  filter: blur(70px);
+  pointer-events: none;
+  top: -250px;
+  left: -200px;
+  animation: blob 24s ease-in-out infinite;
+}
+
+.blob-2 {
+  position: fixed;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(194, 65, 12, 0.1), transparent 70%);
+  border-radius: 50%;
+  filter: blur(70px);
+  pointer-events: none;
+  bottom: -120px;
+  right: -80px;
+  animation: blob 30s ease-in-out infinite 5s;
+}
+
+.blob-3 {
+  position: fixed;
+  width: 350px;
+  height: 350px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.06), transparent 70%);
+  border-radius: 50%;
+  filter: blur(60px);
+  pointer-events: none;
+  top: 55%;
+  left: 45%;
+  animation: blob 20s ease-in-out infinite 10s;
+}
+
+@keyframes blob {
+  0%,
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(40px, -40px) scale(1.08);
+  }
+  66% {
+    transform: translate(-30px, 20px) scale(0.94);
+  }
+}
+
+/* Resource bars */
+.resource-bar {
+  height: 3px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+
+.resource-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.6s ease;
+}
+
+/* =====================================================
+   LIGHT THEME — html.light overrides
+   All selectors have higher specificity than Tailwind's
+   generated utilities (element + class > class alone).
+   ===================================================== */
+
+/* Body & scrollbar */
+html.light body {
+  background-color: #f0f4ff;
+  color: #0f172a;
+}
+html.light ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.12);
+}
+html.light ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.22);
+}
+
+/* Custom classes — glass re-enabled with proper light glassmorphism */
+html.light .glass {
+  background: rgba(255, 255, 255, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.70);
+  backdrop-filter: blur(14px) saturate(180%);
+  -webkit-backdrop-filter: blur(14px) saturate(180%);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.80);
+}
+html.light .glass-hover:hover {
+  background: rgba(255, 255, 255, 0.65);
+  border-color: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 8px 32px rgba(59, 130, 246, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.90);
+}
+html.light .resource-bar {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+/* Blobs — vibrant & saturated so colors bleed through the glass */
+html.light .blob-1 {
+  background: radial-gradient(circle, rgba(37, 99, 235, 0.50), transparent 70%);
+}
+html.light .blob-2 {
+  background: radial-gradient(circle, rgba(234, 88, 12, 0.40), transparent 70%);
+}
+html.light .blob-3 {
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.32), transparent 70%);
+}
+
+/* ---- Text: white/X → slate-900/X ---- */
+/* Bare white — primary text. Re-whiten on solid colored buttons below. */
+html.light .text-white           { color: #0f172a; }
+html.light .text-white\/80       { color: rgb(15 23 42 / 0.80); }
+html.light .text-white\/60       { color: rgb(15 23 42 / 0.60); }
+html.light .text-white\/55       { color: rgb(15 23 42 / 0.55); }
+html.light .text-white\/50       { color: rgb(15 23 42 / 0.50); }
+html.light .text-white\/45       { color: rgb(15 23 42 / 0.45); }
+html.light .text-white\/40       { color: rgb(15 23 42 / 0.58); }
+html.light .text-white\/35       { color: rgb(15 23 42 / 0.50); }
+html.light .text-white\/30       { color: rgb(15 23 42 / 0.42); }
+html.light .text-white\/25       { color: rgb(15 23 42 / 0.45); }
+html.light .text-white\/20       { color: rgb(15 23 42 / 0.32); }
+html.light .text-white\/15       { color: rgb(15 23 42 / 0.22); }
+
+/* Re-whiten text on solid filled colored buttons (higher specificity wins) */
+html.light .bg-blue-600.text-white,
+html.light .bg-blue-500.text-white,
+html.light .hover\:bg-blue-500:hover .text-white { color: #ffffff; }
+
+/* ---- Hover text ---- */
+html.light .hover\:text-white\/55:hover { color: rgb(15 23 42 / 0.68); }
+html.light .hover\:text-white\/60:hover { color: rgb(15 23 42 / 0.75); }
+html.light .hover\:text-white\/70:hover { color: rgb(15 23 42 / 0.85); }
+html.light .hover\:text-white\/80:hover { color: rgb(15 23 42 / 0.92); }
+
+/* ---- Backgrounds: white/X → very subtle dark tint ---- */
+html.light .bg-black\/20 { /* sidebar */
+  background-color: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+}
+html.light .bg-white\/\[0\.03\]   { background-color: rgba(255, 255, 255, 0.35); }
+html.light .bg-white\/\[0\.04\]   { background-color: rgba(255, 255, 255, 0.40); }
+html.light .bg-white\/\[0\.05\]   { background-color: rgba(255, 255, 255, 0.45); }
+html.light .bg-white\/\[0\.06\]   { background-color: rgba(255, 255, 255, 0.50); }
+html.light .bg-white\/\[0\.07\]   { background-color: rgba(255, 255, 255, 0.55); }
+html.light .bg-white\/15          { background-color: rgba(255, 255, 255, 0.60); }
+html.light .bg-white\/20          { background-color: rgba(255, 255, 255, 0.65); }
+
+/* ---- Hover backgrounds ---- */
+html.light .hover\:bg-white\/\[0\.04\]:hover { background-color: rgba(255, 255, 255, 0.40); }
+html.light .hover\:bg-white\/\[0\.05\]:hover { background-color: rgba(255, 255, 255, 0.50); }
+html.light .hover\:bg-white\/\[0\.07\]:hover { background-color: rgba(255, 255, 255, 0.55); }
+html.light .hover\:bg-white\/\[0\.09\]:hover { background-color: rgba(255, 255, 255, 0.65); }
+
+/* ---- Borders ---- */
+html.light .border-white\/\[0\.05\] { border-color: rgba(255, 255, 255, 0.50); }
+html.light .border-white\/\[0\.08\] { border-color: rgba(255, 255, 255, 0.55); }
+html.light .border-white\/\[0\.10\] { border-color: rgba(255, 255, 255, 0.60); }
+html.light .border-white\/\[0\.18\] { border-color: rgba(255, 255, 255, 0.70); }
+html.light .border-white\/10        { border-color: rgba(255, 255, 255, 0.60); }
+
+/* ---- Divide ---- */
+html.light .divide-white\/\[0\.04\] > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgba(255, 255, 255, 0.30);
+}
+html.light .divide-white\/\[0\.05\] > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+/* ---- Placeholder ---- */
+html.light .placeholder-white\/20::placeholder { color: rgb(15 23 42 / 0.35); }
+
+/* ---- Ring ---- */
+html.light .ring-white\/10 { --tw-ring-color: rgba(0, 0, 0, 0.10); }
