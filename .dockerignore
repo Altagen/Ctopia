@@ -1,0 +1,22 @@
+# Dev artifacts
+web/node_modules/
+web/dist/
+dist/
+.air/
+*.log
+
+# Data & secrets
+data/
+config.yml
+
+# Git
+.git/
+.gitignore
+
+# Docs
+docs/
+*.md
+
+# IDE
+.vscode/
+.idea/
