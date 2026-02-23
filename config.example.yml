@@ -1,0 +1,17 @@
+engine: docker
+socket: /var/run/docker.sock
+port: 8080
+data_dir: ./data
+
+auth:
+  enabled: true
+  # strict: true enforces strong password requirements (min 12 chars, uppercase,
+  # lowercase, digit, special character). Set to false only in dev/test environments.
+  # Default: true
+  # strict: false
+
+composes:
+  - name: "My App"
+    path: /srv/myapp
+  - name: "Monitoring"
+    path: /srv/monitoring
