@@ -16,6 +16,14 @@ A lightweight, self-hosted Docker dashboard. Manage containers, compose stacks, 
 
 ---
 
+## Screenshots
+
+![Dashboard](assets/dashboard-ctopia.png)
+
+![Settings](assets/settings-ctopia.png)
+
+---
+
 ## Quick Start
 
 ### Docker (recommended)

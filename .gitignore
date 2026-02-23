@@ -7,3 +7,4 @@ data/
 .air/
 *.log
 config.yml
+docker-compose.override.yml
