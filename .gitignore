@@ -1,5 +1,6 @@
 node_modules/
 web/node_modules/
+web/.vite/
 web/dist/*
 !web/dist/.gitkeep
 dist/
