@@ -6,54 +6,10 @@ on:
       - '[0-9]+.[0-9]+.[0-9]+*'
 
 jobs:
-  # Create a draft GitHub Release with generated changelog
-  create-release:
-    name: 📋 Create Release
-    runs-on: ubuntu-latest
-    outputs:
-      release_id: ${{ steps.create_release.outputs.id }}
-      version: ${{ steps.version.outputs.version }}
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Get version from tag
-        id: version
-        run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-
-      - name: Generate changelog
-        uses: orhun/git-cliff-action@v4
-        with:
-          config: cliff.toml
-          args: --latest --strip header
-        env:
-          OUTPUT: changelog.md
-
-      - name: Show changelog
-        run: cat changelog.md
-
-      - name: Create draft release
-        id: create_release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: Ctopia ${{ steps.version.outputs.version }}
-          body_path: changelog.md
-          draft: true
-          prerelease: ${{ contains(github.ref_name, '-') }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  # Build the React frontend
+  # Build the React frontend and expose it as an artifact
   build-web:
-    name: 🎨 Build Frontend
+    name: 🎨 Frontend
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: web
     steps:
       - uses: actions/checkout@v4
 
@@ -63,11 +19,11 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
 
-      - name: Install dependencies
-        run: npm ci
+      - run: npm ci
+        working-directory: web
 
-      - name: Build
-        run: npm run build
+      - run: npm run build
+        working-directory: web
 
       - uses: actions/upload-artifact@v4
         with:
@@ -75,31 +31,19 @@ jobs:
           path: web/dist/
           retention-days: 1
 
-  # Cross-compile Go binaries — upload as artifacts only (no concurrent release uploads)
+  # Cross-compile Go binaries for all target platforms
   build-binaries:
     name: 🔨 Build (${{ matrix.name }})
-    needs: [create-release, build-web]
+    needs: build-web
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
-          - name: Linux x86_64
-            goos: linux
-            goarch: amd64
-
-          - name: Linux ARM64
-            goos: linux
-            goarch: arm64
-
-          - name: macOS Intel
-            goos: darwin
-            goarch: amd64
-
-          - name: macOS Apple Silicon
-            goos: darwin
-            goarch: arm64
-
+          - { name: "Linux x86_64",       goos: linux,  goarch: amd64 }
+          - { name: "Linux ARM64",         goos: linux,  goarch: arm64 }
+          - { name: "macOS Intel",         goos: darwin, goarch: amd64 }
+          - { name: "macOS Apple Silicon", goos: darwin, goarch: arm64 }
     steps:
       - uses: actions/checkout@v4
 
@@ -107,8 +51,7 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Download frontend dist
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           name: frontend-dist
           path: web/dist/
@@ -118,29 +61,32 @@ jobs:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: 0
-          VERSION: ${{ needs.create-release.outputs.version }}
+          VERSION: ${{ github.ref_name }}
         run: |
           go build \
             -ldflags="-s -w -X main.version=${VERSION}" \
             -o "ctopia-hub-${VERSION}-${{ matrix.goos }}-${{ matrix.goarch }}" \
             ./cmd/hub
 
-      - name: Upload binary artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: binary-${{ matrix.goos }}-${{ matrix.goarch }}
           path: ctopia-hub-*
           retention-days: 1
 
-  # Download all binaries, generate SHA256SUMS, upload everything in one shot
-  upload-assets:
-    name: 📦 Upload Assets
-    needs: [create-release, build-binaries]
+  # Create GitHub release with changelog, binaries and checksums
+  release:
+    name: 🚀 Release
+    needs: build-binaries
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - name: Download all binary artifacts
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all binaries
         uses: actions/download-artifact@v4
         with:
           pattern: binary-*
@@ -151,15 +97,31 @@ jobs:
         run: |
           cd release-assets
           sha256sum * > SHA256SUMS.txt
-          echo "--- SHA256SUMS ---"
           cat SHA256SUMS.txt
 
-      - name: Upload all assets to release
+      - name: Generate changelog
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: cliff.toml
+          args: --latest --strip header
+        env:
+          OUTPUT: CHANGELOG.md
+
+      - name: Create release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release upload ${{ github.ref_name }} release-assets/* --clobber
+        run: |
+          PRERELEASE_FLAG=""
+          if echo "${{ github.ref_name }}" | grep -q '\-'; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+          gh release create "${{ github.ref_name }}" \
+            --title "Ctopia ${{ github.ref_name }}" \
+            --notes-file CHANGELOG.md \
+            $PRERELEASE_FLAG \
+            release-assets/*
 
-  # Build multi-arch Docker image from pre-compiled linux binaries
+  # Build and push multi-arch Docker image from pre-compiled linux binaries
   docker:
     name: 🐳 Docker
     needs: build-binaries
@@ -170,26 +132,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download linux/amd64 binary
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           name: binary-linux-amd64
           path: docker-ctx/
 
-      - name: Download linux/arm64 binary
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           name: binary-linux-arm64
           path: docker-ctx/
 
-      - name: Rename binaries for Dockerfile.release
+      - name: Prepare binaries
         run: |
           mv docker-ctx/ctopia-hub-*-linux-amd64 docker-ctx/ctopia-hub-linux-amd64
           mv docker-ctx/ctopia-hub-*-linux-arm64 docker-ctx/ctopia-hub-linux-arm64
           chmod +x docker-ctx/*
 
       - uses: docker/setup-qemu-action@v3
-
       - uses: docker/setup-buildx-action@v3
 
       - uses: docker/login-action@v3
@@ -216,22 +175,3 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-
-  # Publish the release (remove draft) once assets and Docker are ready
-  publish:
-    name: 🚀 Publish Release
-    needs: [create-release, upload-assets, docker]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Publish release
-        uses: actions/github-script@v7
-        with:
-          script: |
-            await github.rest.repos.updateRelease({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              release_id: ${{ needs.create-release.outputs.release_id }},
-              draft: false
-            });
