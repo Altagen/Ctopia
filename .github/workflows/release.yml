@@ -155,12 +155,9 @@ jobs:
           cat SHA256SUMS.txt
 
       - name: Upload all assets to release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          files: release-assets/*
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload ${{ github.ref_name }} release-assets/* --clobber
 
   # Build multi-arch Docker image from pre-compiled linux binaries
   docker:
