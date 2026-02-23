@@ -27,24 +27,7 @@ jobs:
       - name: Validate commits
         run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
 
-  # Go vet & build
-  lint-go:
-    name: 🐹 Go
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-go@v5
-        with:
-          go-version-file: go.mod
-
-      - name: go vet
-        run: go vet ./...
-
-      - name: go build
-        run: go build ./...
-
-  # Frontend type-check & build
+  # Frontend type-check & build — produces the dist artifact consumed by lint-go
   lint-web:
     name: 🎨 Frontend
     runs-on: ubuntu-latest
@@ -65,3 +48,33 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-dist-ci
+          path: web/dist/
+          retention-days: 1
+
+  # Go vet & build — needs the built frontend to satisfy go:embed
+  lint-go:
+    name: 🐹 Go
+    needs: lint-web
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download frontend dist
+        uses: actions/download-artifact@v4
+        with:
+          name: web-dist-ci
+          path: web/dist/
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: go build
+        run: go build ./...
