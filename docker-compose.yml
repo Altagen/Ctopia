@@ -1,0 +1,32 @@
+services:
+  ctopia:
+    image: ctopia:latest
+    # Alternatively build locally:
+    # build: .
+    container_name: ctopia
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    volumes:
+      # Docker socket — required for container/image management
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Persistent data (auth, settings)
+      - ctopia-data:/app/data
+      # Your config file
+      - ./config.yml:/app/config.yml:ro
+      # Mount compose project directories declared in config.yml
+      # - /srv/myapp:/srv/myapp:ro
+    environment:
+      - CTOPIA_CONFIG=/app/config.yml
+      # Optional: inject JWT signing key without storing it on disk.
+      # Uncomment and set the value, or use Docker secrets:
+      # - CTOPIA_JWT_SECRET=<your-secret>
+      # To use Docker secrets instead:
+      #   secrets: [ctopia_jwt]
+      # and add: secrets: { ctopia_jwt: { external: true } } at the top level
+    # Give access to the docker group so the socket is readable
+    group_add:
+      - "${DOCKER_GID:-999}"
+
+volumes:
+  ctopia-data:
