@@ -1,0 +1,89 @@
+version: "3"
+
+vars:
+  BINARY: dist/ctopia
+  GO_CMD: ./cmd/hub
+
+tasks:
+  install-web:
+    desc: Install frontend dependencies
+    dir: web
+    cmds:
+      - npm install
+    sources:
+      - package.json
+      - package-lock.json
+    generates:
+      - node_modules/.package-lock.json
+
+  dev:
+    desc: Run Go API (air) + Vite dev server in parallel
+    cmds:
+      - mkdir -p .air
+      - air & (cd web && npm run dev)
+
+  dev-api:
+    desc: Run Go API with hot-reload (air)
+    cmds:
+      - air
+
+  dev-web:
+    desc: Run Vite dev server
+    dir: web
+    cmds:
+      - npm run dev
+
+  build-web:
+    desc: Build the React frontend
+    dir: web
+    cmds:
+      - npm run build
+    sources:
+      - src/**/*
+      - index.html
+      - vite.config.ts
+      - tailwind.config.js
+      - package.json
+    generates:
+      - dist/**/*
+
+  build:
+    desc: Build frontend then embed into Go binary
+    cmds:
+      - task: build-web
+      - mkdir -p dist
+      - go build -ldflags="-s -w" -o {{.BINARY}} {{.GO_CMD}}
+
+  lint:
+    desc: Run Go and frontend linters
+    cmds:
+      - go vet ./...
+      - cd web && npm run lint
+
+  fmt:
+    desc: Format Go and frontend source
+    cmds:
+      - gofmt -w .
+      - cd web && npm run format
+
+  test:
+    desc: Run Go tests
+    cmds:
+      - go test ./...
+
+  clean:
+    desc: Remove build artefacts
+    cmds:
+      - rm -rf dist
+      - rm -rf web/dist
+
+  docker:
+    desc: Build Docker image (ctopia:latest)
+    cmds:
+      - docker build -t ctopia:latest .
+
+  docker-push:
+    desc: Build and push Docker image
+    cmds:
+      - task: docker
+      - docker push ctopia:latest

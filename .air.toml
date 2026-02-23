@@ -1,0 +1,24 @@
+root = "."
+tmp_dir = ".air"
+
+[build]
+  cmd = "go build -o .air/hub ./cmd/hub"
+  bin = ".air/hub"
+  delay = 200
+  exclude_dir = ["web", ".air", "data", "dist"]
+  include_ext = ["go"]
+  kill_delay = "200ms"
+  rerun_delay = 300
+
+[log]
+  time = false
+  main_only = true
+
+[color]
+  main = "cyan"
+  watcher = "yellow"
+  build = "yellow"
+  runner = "green"
+
+[misc]
+  clean_on_exit = true

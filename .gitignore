@@ -1,0 +1,9 @@
+node_modules/
+web/node_modules/
+web/dist/*
+!web/dist/.gitkeep
+dist/
+data/
+.air/
+*.log
+config.yml
