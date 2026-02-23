@@ -75,13 +75,11 @@ jobs:
           path: web/dist/
           retention-days: 1
 
-  # Cross-compile Go binaries for all target platforms
+  # Cross-compile Go binaries — upload as artifacts only (no concurrent release uploads)
   build-binaries:
     name: 🔨 Build (${{ matrix.name }})
     needs: [create-release, build-web]
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     strategy:
       fail-fast: false
       matrix:
@@ -122,28 +120,45 @@ jobs:
           CGO_ENABLED: 0
           VERSION: ${{ needs.create-release.outputs.version }}
         run: |
-          mkdir -p dist release-artifacts
           go build \
             -ldflags="-s -w -X main.version=${VERSION}" \
-            -o "dist/ctopia-hub-${{ matrix.goos }}-${{ matrix.goarch }}" \
+            -o "ctopia-hub-${VERSION}-${{ matrix.goos }}-${{ matrix.goarch }}" \
             ./cmd/hub
-          cp "dist/ctopia-hub-${{ matrix.goos }}-${{ matrix.goarch }}" \
-             "release-artifacts/ctopia-hub-${VERSION}-${{ matrix.goos }}-${{ matrix.goarch }}"
 
-      # Upload fixed-name artifact for Docker job (linux only)
-      - name: Upload artifact
-        if: matrix.goos == 'linux'
+      - name: Upload binary artifact
         uses: actions/upload-artifact@v4
         with:
           name: binary-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: dist/ctopia-hub-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: ctopia-hub-*
           retention-days: 1
 
-      - name: Upload binary to release
+  # Download all binaries, generate SHA256SUMS, upload everything in one shot
+  upload-assets:
+    name: 📦 Upload Assets
+    needs: [create-release, build-binaries]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all binary artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: binary-*
+          path: release-assets/
+          merge-multiple: true
+
+      - name: Generate checksums
+        run: |
+          cd release-assets
+          sha256sum * > SHA256SUMS.txt
+          echo "--- SHA256SUMS ---"
+          cat SHA256SUMS.txt
+
+      - name: Upload all assets to release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          files: release-artifacts/*
+          files: release-assets/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -170,8 +185,11 @@ jobs:
           name: binary-linux-arm64
           path: docker-ctx/
 
-      - name: Mark binaries executable
-        run: chmod +x docker-ctx/*
+      - name: Rename binaries for Dockerfile.release
+        run: |
+          mv docker-ctx/ctopia-hub-*-linux-amd64 docker-ctx/ctopia-hub-linux-amd64
+          mv docker-ctx/ctopia-hub-*-linux-arm64 docker-ctx/ctopia-hub-linux-arm64
+          chmod +x docker-ctx/*
 
       - uses: docker/setup-qemu-action@v3
 
@@ -188,7 +206,7 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository_owner }}/ctopia
           tags: |
-            type=semver,pattern={{version}}
+            type=raw,value=${{ github.ref_name }}
             type=raw,value=latest
 
       - uses: docker/build-push-action@v6
@@ -202,41 +220,10 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  # Download all release assets and generate SHA256 checksums
-  finalize:
-    name: 📦 Finalize
-    needs: [create-release, build-binaries]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Download release assets
-        uses: robinraju/release-downloader@v1
-        with:
-          releaseId: ${{ needs.create-release.outputs.release_id }}
-          fileName: '*'
-          out-file-path: release-assets
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Generate checksums
-        run: |
-          cd release-assets
-          sha256sum * > SHA256SUMS.txt
-          echo "--- SHA256SUMS ---"
-          cat SHA256SUMS.txt
-
-      - name: Upload checksums to release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ github.ref_name }}
-          files: release-assets/SHA256SUMS.txt
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  # Publish the release (remove draft) once everything is ready
+  # Publish the release (remove draft) once assets and Docker are ready
   publish:
     name: 🚀 Publish Release
-    needs: [create-release, finalize, docker]
+    needs: [create-release, upload-assets, docker]
     runs-on: ubuntu-latest
     permissions:
       contents: write
