@@ -267,6 +267,20 @@ func (m *Manager) buildStack(cc config.ComposeConfig, byProject map[string][]con
 			svc.Status = c.Status
 			svc.State = c.State
 			svc.Running = c.State == "running"
+			if len(c.Names) > 0 {
+				svc.ContainerName = strings.TrimPrefix(c.Names[0], "/")
+			}
+			svc.Image = c.Image
+			ports := make([]models.Port, 0, len(c.Ports))
+			for _, p := range c.Ports {
+				ports = append(ports, models.Port{
+					IP:        p.IP,
+					Host:      int(p.PublicPort),
+					Container: int(p.PrivatePort),
+					Protocol:  p.Type,
+				})
+			}
+			svc.Ports = ports
 			if svc.Running {
 				running++
 			}

@@ -32,11 +32,14 @@ type ComposeStack struct {
 }
 
 type ComposeService struct {
-	Name        string `json:"name"`
-	ContainerID string `json:"containerId,omitempty"`
-	Status      string `json:"status"`
-	State       string `json:"state"`
-	Running     bool   `json:"running"`
+	Name          string `json:"name"`
+	ContainerID   string `json:"containerId,omitempty"`
+	ContainerName string `json:"containerName,omitempty"`
+	Image         string `json:"image,omitempty"`
+	Ports         []Port `json:"ports,omitempty"`
+	Status        string `json:"status"`
+	State         string `json:"state"`
+	Running       bool   `json:"running"`
 }
 
 type Image struct {

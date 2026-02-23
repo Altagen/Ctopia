@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Play, Square, RotateCcw, ChevronDown, FolderOpen } from 'lucide-react'
+import { Play, Square, RotateCcw, ChevronDown, FolderOpen, Box, Network } from 'lucide-react'
 import { clsx } from 'clsx'
 import toast from 'react-hot-toast'
 import type { ComposeStack, ComposeFeatures } from '../types'
@@ -87,17 +87,50 @@ export default function ComposeCard({ stack, perms }: Props) {
 
       {/* Expanded service list */}
       {expanded && stack.services.length > 0 && (
-        <div className="border-t border-white/[0.05] px-4 py-3 space-y-1.5">
-          {stack.services.map(svc => (
-            <div key={svc.name} className="flex items-center gap-2.5">
-              <span className={clsx('h-1.5 w-1.5 flex-shrink-0 rounded-full', svc.running ? 'bg-emerald-400' : 'bg-white/15')} />
-              <span className="flex-1 text-xs font-mono text-white/55">{svc.name}</span>
-              {svc.containerId && (
-                <span className="text-[10px] font-mono text-white/20">{svc.containerId}</span>
-              )}
-              <StatusBadge status={svc.state || 'stopped'} />
-            </div>
-          ))}
+        <div className="border-t border-white/[0.05] px-4 py-3 space-y-3">
+          {stack.services.map(svc => {
+            const publishedPorts = svc.ports?.filter(p => p.host > 0) ?? []
+            return (
+              <div key={svc.name} className="space-y-1">
+                {/* Name + status */}
+                <div className="flex items-center gap-2.5">
+                  <span className={clsx('h-1.5 w-1.5 flex-shrink-0 rounded-full', svc.running ? 'bg-emerald-400' : 'bg-white/15')} />
+                  <span className="flex-1 text-xs font-mono text-white/70">{svc.name}</span>
+                  <StatusBadge status={svc.state || 'stopped'} />
+                </div>
+
+                {/* Container name */}
+                {svc.containerName && (
+                  <div className="ml-4 flex items-center gap-1 text-[10px] font-mono text-white/25">
+                    <Box className="h-2.5 w-2.5 flex-shrink-0" />
+                    <span>{svc.containerName}</span>
+                  </div>
+                )}
+
+                {/* Image */}
+                {svc.image && (
+                  <div className="ml-4 text-[10px] font-mono text-white/20 truncate pl-3.5">
+                    {svc.image}
+                  </div>
+                )}
+
+                {/* Published ports */}
+                {publishedPorts.length > 0 && (
+                  <div className="ml-4 flex flex-wrap items-center gap-1 pl-3.5">
+                    <Network className="h-2.5 w-2.5 flex-shrink-0 text-white/20" />
+                    {publishedPorts.map((p, i) => (
+                      <span
+                        key={i}
+                        className="text-[10px] font-mono text-white/35 bg-white/[0.05] rounded px-1 py-0.5"
+                      >
+                        {p.host}:{p.container}/{p.protocol}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
     </div>

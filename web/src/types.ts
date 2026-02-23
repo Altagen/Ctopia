@@ -23,6 +23,9 @@ export interface Container {
 export interface ComposeService {
   name: string
   containerId?: string
+  containerName?: string
+  image?: string
+  ports?: Port[]
   status: string
   state: string
   running: boolean
