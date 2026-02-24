@@ -79,7 +79,7 @@ function Overview({ state, features }: { state: AppState; features: FeatureSet }
         <LoadingSpinner />
       ) : (
         <>
-          {state.containers.length > 0 && (
+          {state.containers.length > 0 && features.containers.view && (
             <Section title="Containers" count={state.containers.length} icon={ContainerIcon} color="blue">
               <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                 {state.containers.slice(0, 6).map(c => (
@@ -89,7 +89,7 @@ function Overview({ state, features }: { state: AppState; features: FeatureSet }
             </Section>
           )}
 
-          {state.composes.length > 0 && (
+          {state.composes.length > 0 && features.composes.view && (
             <Section title="Compose stacks" count={state.composes.length} icon={Boxes} color="orange">
               <div className="grid gap-2 sm:grid-cols-2">
                 {state.composes.map(s => (
@@ -141,7 +141,7 @@ function ContainersPage({ state, containerPerms }: { state: AppState; containerP
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <div className="relative min-w-48 flex-1">
-          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/25" />
+          <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/40" />
           <input
             type="text"
             placeholder="Search by name or image…"
@@ -218,10 +218,10 @@ function PageHeader({ title, subtitle, lastUpdate, icon: Icon, color }: {
           {Icon && <Icon className={`h-5 w-5 ${titleColor}`} />}
           <h1 className={`text-xl font-semibold ${titleColor}`}>{title}</h1>
         </div>
-        <p className="text-sm text-white/35">{subtitle}</p>
+        <p className="text-sm text-white/55">{subtitle}</p>
       </div>
       {lastUpdate && (
-        <p className="text-xs text-white/20">
+        <p className="text-xs text-white/40">
           Updated {new Date(lastUpdate * 1000).toLocaleTimeString()}
         </p>
       )}
@@ -286,7 +286,7 @@ function FilterTabs<T extends string>({
           key={opt}
           onClick={() => onChange(opt)}
           className={`rounded-lg px-3 py-1.5 text-xs font-medium capitalize transition ${
-            value === opt ? 'bg-blue-600 text-white' : 'text-white/35 hover:text-white/60'
+            value === opt ? 'bg-blue-600 text-white' : 'text-white/50 hover:text-white/70'
           }`}
         >
           {opt}
@@ -300,12 +300,12 @@ function EmptyState({ icon: Icon, title, desc, code }: { icon: React.ElementType
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
       <div className="mb-3 rounded-2xl bg-white/[0.03] p-4">
-        <Icon className="h-7 w-7 text-white/15" />
+        <Icon className="h-7 w-7 text-white/25" />
       </div>
-      <p className="text-sm font-medium text-white/40">{title}</p>
-      <p className="mt-1 max-w-xs text-xs text-white/20">{desc}</p>
+      <p className="text-sm font-medium text-white/60">{title}</p>
+      <p className="mt-1 max-w-xs text-xs text-white/45">{desc}</p>
       {code && (
-        <pre className="mt-4 rounded-xl bg-white/[0.04] px-5 py-3 text-left text-xs font-mono text-white/35 ring-1 ring-white/06">
+        <pre className="mt-4 rounded-xl bg-white/[0.04] px-5 py-3 text-left text-xs font-mono text-white/55 ring-1 ring-white/06">
           {code}
         </pre>
       )}
