@@ -39,7 +39,7 @@ RUN apk add --no-cache ca-certificates docker-cli docker-cli-compose
 WORKDIR /app
 COPY --from=builder /app/ctopia .
 
-# /data  — persistent data (auth.json, settings.json)
+# /app/data — persistent data (auth.json, settings.json)
 # config is mounted by the user at runtime
 VOLUME ["/app/data"]
 

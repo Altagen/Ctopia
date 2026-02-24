@@ -7,7 +7,11 @@ ARG TARGETARCH
 COPY docker-ctx/ctopia-hub-linux-${TARGETARCH} /usr/local/bin/ctopia-hub
 
 RUN chmod +x /usr/local/bin/ctopia-hub \
-    && apk add --no-cache ca-certificates tzdata
+    && apk add --no-cache ca-certificates tzdata docker-cli docker-cli-compose
+
+WORKDIR /app
+
+VOLUME ["/app/data"]
 
 EXPOSE 8080
 
