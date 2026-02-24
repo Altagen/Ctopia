@@ -192,6 +192,8 @@ html.light .blob-3 {
 /* Bare white — primary text. Re-whiten on solid colored buttons below. */
 html.light .text-white           { color: #0f172a; }
 html.light .text-white\/80       { color: rgb(15 23 42 / 0.80); }
+html.light .text-white\/70       { color: rgb(15 23 42 / 0.70); }
+html.light .text-white\/65       { color: rgb(15 23 42 / 0.65); }
 html.light .text-white\/60       { color: rgb(15 23 42 / 0.60); }
 html.light .text-white\/55       { color: rgb(15 23 42 / 0.55); }
 html.light .text-white\/50       { color: rgb(15 23 42 / 0.50); }

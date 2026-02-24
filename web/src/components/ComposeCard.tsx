@@ -43,7 +43,7 @@ export default function ComposeCard({ stack, perms }: Props) {
               <span className="font-medium text-white">{stack.name}</span>
               <StatusBadge status={stack.status} />
             </div>
-            <div className="mt-0.5 flex items-center gap-1 text-[11px] text-white/25">
+            <div className="mt-0.5 flex items-center gap-1 text-[11px] text-white/45">
               <FolderOpen className="h-3 w-3 flex-shrink-0" />
               <span className="truncate font-mono">{stack.path}</span>
             </div>
@@ -67,9 +67,9 @@ export default function ComposeCard({ stack, perms }: Props) {
         {stack.services.length > 0 && (
           <button
             onClick={() => setExpanded(v => !v)}
-            className="mt-3 flex w-full items-center gap-2 text-left text-xs text-white/35 hover:text-white/55 transition"
+            className="mt-3 flex w-full items-center gap-2 text-left text-xs text-white/55 hover:text-white/70 transition"
           >
-            <span className="font-medium text-white/55">{runningCount}/{stack.services.length}</span>
+            <span className="font-medium text-white/70">{runningCount}/{stack.services.length}</span>
             <span>services running</span>
             {/* Dot strip */}
             <div className="flex flex-1 gap-1">
@@ -101,7 +101,7 @@ export default function ComposeCard({ stack, perms }: Props) {
 
                 {/* Container name */}
                 {svc.containerName && (
-                  <div className="ml-4 flex items-center gap-1 text-[10px] font-mono text-white/25">
+                  <div className="ml-4 flex items-center gap-1 text-[10px] font-mono text-white/50">
                     <Box className="h-2.5 w-2.5 flex-shrink-0" />
                     <span>{svc.containerName}</span>
                   </div>
@@ -109,7 +109,7 @@ export default function ComposeCard({ stack, perms }: Props) {
 
                 {/* Image */}
                 {svc.image && (
-                  <div className="ml-4 text-[10px] font-mono text-white/20 truncate pl-3.5">
+                  <div className="ml-4 text-[10px] font-mono text-white/50 truncate pl-3.5">
                     {svc.image}
                   </div>
                 )}
@@ -117,11 +117,11 @@ export default function ComposeCard({ stack, perms }: Props) {
                 {/* Published ports */}
                 {publishedPorts.length > 0 && (
                   <div className="ml-4 flex flex-wrap items-center gap-1 pl-3.5">
-                    <Network className="h-2.5 w-2.5 flex-shrink-0 text-white/20" />
+                    <Network className="h-2.5 w-2.5 flex-shrink-0 text-white/40" />
                     {publishedPorts.map((p, i) => (
                       <span
                         key={i}
-                        className="text-[10px] font-mono text-white/35 bg-white/[0.05] rounded px-1 py-0.5"
+                        className="text-[10px] font-mono text-white/55 bg-white/[0.05] rounded px-1 py-0.5"
                       >
                         {p.host}:{p.container}/{p.protocol}
                       </span>

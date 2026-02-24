@@ -84,7 +84,7 @@ export default function ContainerCard({ container, perms }: Props) {
             <span className="truncate font-medium text-white leading-snug">{container.name}</span>
             <StatusBadge status={container.state} />
           </div>
-          <p className="mt-0.5 truncate text-xs text-white/30 font-mono">{container.image}</p>
+          <p className="mt-0.5 truncate text-xs text-white/55 font-mono">{container.image}</p>
         </div>
 
         {/* Actions */}
@@ -101,7 +101,7 @@ export default function ContainerCard({ container, perms }: Props) {
               <button
                 onClick={() => setConfirmDelete(true)}
                 title="Delete container"
-                className="flex h-7 w-7 items-center justify-center rounded-lg text-white/20 transition hover:bg-red-500/10 hover:text-red-400"
+                className="flex h-7 w-7 items-center justify-center rounded-lg text-white/35 transition hover:bg-red-500/10 hover:text-red-400"
               >
                 <Trash2 className="h-3.5 w-3.5" />
               </button>
@@ -119,13 +119,13 @@ export default function ContainerCard({ container, perms }: Props) {
               href={`http://${window.location.hostname}:${p.host}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 rounded-md bg-white/[0.05] px-1.5 py-0.5 text-[10px] font-mono text-white/35 transition hover:bg-blue-500/10 hover:text-blue-400"
+              className="inline-flex items-center gap-1 rounded-md bg-white/[0.05] px-1.5 py-0.5 text-[10px] font-mono text-white/55 transition hover:bg-blue-500/10 hover:text-blue-400"
             >
               <ExternalLink className="h-2.5 w-2.5" />
               {p.host}:{p.container}
             </a>
           ) : (
-            <span key={i} className="inline-flex items-center gap-1 rounded-md bg-white/[0.05] px-1.5 py-0.5 text-[10px] font-mono text-white/35">
+            <span key={i} className="inline-flex items-center gap-1 rounded-md bg-white/[0.05] px-1.5 py-0.5 text-[10px] font-mono text-white/55">
               {p.host}:{p.container}
             </span>
           ))}
@@ -137,15 +137,15 @@ export default function ContainerCard({ container, perms }: Props) {
         <div className="mt-3 grid grid-cols-2 gap-3">
           <div>
             <div className="mb-1 flex justify-between text-[10px]">
-              <span className="uppercase tracking-wider text-white/25">CPU</span>
-              <span className="font-mono text-white/45">{container.cpu.toFixed(1)}%</span>
+              <span className="uppercase tracking-wider text-white/45">CPU</span>
+              <span className="font-mono text-white/65">{container.cpu.toFixed(1)}%</span>
             </div>
             <ResourceBar pct={container.cpu} color={cpuColor(container.cpu)} />
           </div>
           <div>
             <div className="mb-1 flex justify-between text-[10px]">
-              <span className="uppercase tracking-wider text-white/25">Mem</span>
-              <span className="font-mono text-white/45">{formatBytes(container.memory)}</span>
+              <span className="uppercase tracking-wider text-white/45">Mem</span>
+              <span className="font-mono text-white/65">{formatBytes(container.memory)}</span>
             </div>
             <ResourceBar pct={memPct} color={memColor(memPct)} />
           </div>
@@ -159,7 +159,7 @@ export default function ContainerCard({ container, perms }: Props) {
           <div className="flex gap-1">
             <button
               onClick={() => setConfirmDelete(false)}
-              className="rounded-lg px-2 py-1 text-xs text-white/40 transition hover:text-white/70"
+              className="rounded-lg px-2 py-1 text-xs text-white/60 transition hover:text-white/80"
             >
               Cancel
             </button>
