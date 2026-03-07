@@ -203,6 +203,10 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid body", http.StatusBadRequest)
 		return
 	}
+	if !s.auth.IsSetupComplete() {
+		http.Error(w, "not configured", http.StatusServiceUnavailable)
+		return
+	}
 	token, err := s.auth.Login(body.Password)
 	if err != nil {
 		http.Error(w, "invalid password", http.StatusUnauthorized)

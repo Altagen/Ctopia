@@ -41,6 +41,9 @@ function AppInner() {
   // Bootstrap: check setup + auth status
   useEffect(() => {
     api.setup.status().then(({ configured, authless: al, strict: st, admin_features, public_features }) => {
+      if (!configured) {
+        localStorage.removeItem('ctopia_token')
+      }
       setSetupDone(configured)
       setAuthless(al)
       setStrict(st)
@@ -126,7 +129,9 @@ function AppInner() {
       <Route
         path="/login"
         element={
-          isAdmin ? <Navigate to="/" replace /> : <Login onLogin={handleLogin} />
+          !setupDone ? <Navigate to="/setup" replace /> :
+          isAdmin ? <Navigate to="/" replace /> :
+          <Login onLogin={handleLogin} />
         }
       />
       <Route
