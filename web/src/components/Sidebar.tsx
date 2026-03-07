@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { Container, LayoutGrid, LogOut, LogIn, Boxes, Wifi, WifiOff, Settings, HardDrive } from 'lucide-react'
 import { clsx } from 'clsx'
-import logo from '../assets/ctopia.png'
+import logo from '../assets/ctopia_logo.png'
 import type { FeatureSet } from '../types'
 
 interface Props {
