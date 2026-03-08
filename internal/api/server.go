@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,6 +21,7 @@ import (
 	"ctopia/internal/config"
 	"ctopia/internal/docker"
 	"ctopia/internal/models"
+	"ctopia/internal/pipeline"
 	"ctopia/internal/settings"
 	ctopiaWeb "ctopia/web"
 )
@@ -31,15 +34,34 @@ type Server struct {
 	hub      *wsHub
 	router   *chi.Mux
 	rl       *rateLimiter
+	store    *pipeline.Store
+	executor *pipeline.Executor
 }
 
 var upgrader = websocket.Upgrader{
-	CheckOrigin:     func(r *http.Request) bool { return true },
+	CheckOrigin: func(r *http.Request) bool {
+		origin := r.Header.Get("Origin")
+		if origin == "" {
+			return true // non-browser clients (CLI, curl, etc.)
+		}
+		parsed, err := url.Parse(origin)
+		if err != nil {
+			return false
+		}
+		// Compare hostnames without port — allows reverse proxy setups where
+		// the frontend port differs from the backend port (e.g. Vite dev server).
+		originHost := parsed.Hostname()
+		requestHost := r.Host
+		if h, _, err := net.SplitHostPort(requestHost); err == nil {
+			requestHost = h
+		}
+		return originHost == requestHost
+	},
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 }
 
-func NewServer(cfg *config.Config, docker *docker.Manager, auth *auth.Service, svc *settings.Service) *Server {
+func NewServer(cfg *config.Config, docker *docker.Manager, auth *auth.Service, svc *settings.Service, store *pipeline.Store) *Server {
 	s := &Server{
 		cfg:      cfg,
 		docker:   docker,
@@ -47,9 +69,18 @@ func NewServer(cfg *config.Config, docker *docker.Manager, auth *auth.Service, s
 		settings: svc,
 		hub:      newWSHub(),
 		rl:       newRateLimiter(),
+		store:    store,
 	}
+	s.executor = pipeline.NewExecutor(docker, s.broadcastRaw, s.pushState)
 	s.routes()
 	return s
+}
+
+func (s *Server) broadcastRaw(data []byte) {
+	select {
+	case s.hub.broadcast <- data:
+	default:
+	}
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -130,6 +161,18 @@ func (s *Server) routes() {
 		// Settings — admin only
 		r.With(s.requireAdmin).Get("/api/settings", s.handleGetSettings)
 		r.With(s.requireAdmin).Post("/api/settings", s.handleUpdateSettings)
+
+		// Pipelines
+		r.With(s.requireFeature(func(f settings.FeatureSet) bool { return f.Pipelines.View })).
+			Get("/api/pipelines", s.handleListPipelines)
+		r.With(s.requireAdmin, s.requireFeature(func(f settings.FeatureSet) bool { return f.Pipelines.Manage })).
+			Post("/api/pipelines", s.handleCreatePipeline)
+		r.With(s.requireFeature(func(f settings.FeatureSet) bool { return f.Pipelines.Run })).
+			Post("/api/pipelines/{name}/run", s.handleRunPipeline)
+		r.With(s.requireAdmin, s.requireFeature(func(f settings.FeatureSet) bool { return f.Pipelines.Manage })).
+			Put("/api/pipelines/{name}", s.handleUpdatePipeline)
+		r.With(s.requireAdmin, s.requireFeature(func(f settings.FeatureSet) bool { return f.Pipelines.Manage })).
+			Delete("/api/pipelines/{name}", s.handleDeletePipeline)
 	})
 
 	// Static files (SPA)
@@ -504,6 +547,68 @@ func (s *Server) handleWS(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
+}
+
+// --- Pipeline Handlers ---
+
+func (s *Server) handleListPipelines(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(s.store.List())
+}
+
+func (s *Server) handleCreatePipeline(w http.ResponseWriter, r *http.Request) {
+	var p models.Pipeline
+	if err := json.NewDecoder(r.Body).Decode(&p); err != nil || p.Name == "" {
+		http.Error(w, "invalid body: name required", http.StatusBadRequest)
+		return
+	}
+	if err := s.store.Create(p); err != nil {
+		http.Error(w, err.Error(), http.StatusConflict)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(p)
+}
+
+func (s *Server) handleUpdatePipeline(w http.ResponseWriter, r *http.Request) {
+	name := chi.URLParam(r, "name")
+	var p models.Pipeline
+	if err := json.NewDecoder(r.Body).Decode(&p); err != nil {
+		http.Error(w, "invalid body", http.StatusBadRequest)
+		return
+	}
+	if err := s.store.Update(name, p); err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(p)
+}
+
+func (s *Server) handleDeletePipeline(w http.ResponseWriter, r *http.Request) {
+	name := chi.URLParam(r, "name")
+	if err := s.store.Delete(name); err != nil {
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) handleRunPipeline(w http.ResponseWriter, r *http.Request) {
+	name := chi.URLParam(r, "name")
+	p, ok := s.store.Get(name)
+	if !ok {
+		http.Error(w, "pipeline not found", http.StatusNotFound)
+		return
+	}
+	removeVolumes := s.settings.Get().RemoveVolumesOnStop
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+	go func() {
+		defer cancel()
+		s.executor.Run(ctx, p, removeVolumes)
+	}()
+	w.WriteHeader(http.StatusAccepted)
 }
 
 // --- State Broadcaster ---
