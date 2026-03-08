@@ -52,8 +52,56 @@ type Image struct {
 }
 
 type WSMessage struct {
-	Type       string         `json:"type"`
-	Containers []Container    `json:"containers"`
-	Composes   []ComposeStack `json:"composes"`
-	Timestamp  int64          `json:"timestamp"`
+	Type        string               `json:"type"`
+	Containers  []Container          `json:"containers,omitempty"`
+	Composes    []ComposeStack       `json:"composes,omitempty"`
+	Timestamp   int64                `json:"timestamp"`
+	PipelineRun *PipelineRunProgress `json:"pipeline_run,omitempty"`
+}
+
+// --- Pipeline ---
+
+type WaitMode string
+
+const (
+	WaitImmediately     WaitMode = "immediately"
+	WaitServicesRunning WaitMode = "services_running"
+	WaitDelay           WaitMode = "delay"
+)
+
+type PipelineStep struct {
+	Name         string   `json:"name" yaml:"name"`
+	Action       string   `json:"action" yaml:"action"` // start|stop|restart
+	Composes     []string `json:"composes" yaml:"composes"`
+	Wait         WaitMode `json:"wait" yaml:"wait"`
+	DelaySeconds int      `json:"delay_seconds,omitempty" yaml:"delay_seconds,omitempty"`
+}
+
+type Pipeline struct {
+	Name            string         `json:"name" yaml:"name"`
+	Source          string         `json:"source"` // "config" | "runtime"
+	ContinueOnError bool           `json:"continue_on_error" yaml:"continue_on_error"`
+	Steps           []PipelineStep `json:"steps" yaml:"steps"`
+}
+
+type ComposeActionResult struct {
+	Name   string `json:"name"`
+	Status string `json:"status"` // pending|running|done|failed
+	Error  string `json:"error,omitempty"`
+}
+
+type PipelineStepResult struct {
+	Index          int                   `json:"index"`
+	Name           string                `json:"name"`
+	Status         string                `json:"status"` // pending|running|done|failed
+	ComposeResults []ComposeActionResult `json:"compose_results"`
+	Error          string                `json:"error,omitempty"`
+}
+
+type PipelineRunProgress struct {
+	PipelineName string               `json:"pipeline_name"`
+	Status       string               `json:"status"` // running|done|failed
+	Steps        []PipelineStepResult `json:"steps"`
+	StartedAt    int64                `json:"started_at"`
+	FinishedAt   int64                `json:"finished_at,omitempty"`
 }

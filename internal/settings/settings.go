@@ -30,10 +30,17 @@ type ImageFeatures struct {
 	Pull   bool `json:"pull"`
 }
 
+type PipelineFeatures struct {
+	View   bool `json:"view"`
+	Run    bool `json:"run"`
+	Manage bool `json:"manage"` // create/edit/delete runtime pipelines
+}
+
 type FeatureSet struct {
 	Containers ContainerFeatures `json:"containers"`
 	Composes   ComposeFeatures   `json:"composes"`
 	Images     ImageFeatures     `json:"images"`
+	Pipelines  PipelineFeatures  `json:"pipelines"`
 }
 
 type Settings struct {
@@ -100,7 +107,8 @@ func isZeroFeatureSet(f FeatureSet) bool {
 	return !f.Containers.View && !f.Containers.Start && !f.Containers.Stop &&
 		!f.Containers.Restart && !f.Containers.Delete &&
 		!f.Composes.View && !f.Composes.Start && !f.Composes.Stop && !f.Composes.Restart &&
-		!f.Images.View && !f.Images.Delete && !f.Images.Prune && !f.Images.Pull
+		!f.Images.View && !f.Images.Delete && !f.Images.Prune && !f.Images.Pull &&
+		!f.Pipelines.View && !f.Pipelines.Run && !f.Pipelines.Manage
 }
 
 // applyDefaults fills zero-value FeatureSet fields with sensible defaults
@@ -111,7 +119,11 @@ func (s *Service) applyDefaults() {
 			Containers: ContainerFeatures{View: true, Start: true, Stop: true, Restart: true, Delete: true},
 			Composes:   ComposeFeatures{View: true, Start: true, Stop: true, Restart: true},
 			Images:     ImageFeatures{View: true, Delete: true, Prune: true, Pull: true},
+			Pipelines:  PipelineFeatures{View: true, Run: true, Manage: true},
 		}
+	} else if !s.current.AdminFeatures.Pipelines.View && !s.current.AdminFeatures.Pipelines.Run && !s.current.AdminFeatures.Pipelines.Manage {
+		// Migrate existing installs: grant pipeline access to admins
+		s.current.AdminFeatures.Pipelines = PipelineFeatures{View: true, Run: true, Manage: true}
 	}
 	if isZeroFeatureSet(s.current.PublicFeatures) {
 		s.current.PublicFeatures = FeatureSet{
