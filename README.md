@@ -31,6 +31,7 @@ Manage containers, compose stacks, and images from a clean web UI — with real-
 - **Container management** — start, stop, restart, delete
 - **Compose stacks** — manage multi-service stacks declared in `config.yml`
 - **Image management** — list, delete, prune unused, pull by reference
+- **Pipelines** — define ordered execution flows across compose stacks with sequential steps, parallel actions, and configurable wait modes (`services_running`, `delay`, `immediately`)
 - **Granular permissions** — per-action feature flags for admins and public (authless) users
 - **Authless mode** — expose a read-only (or custom) view without requiring login
 - **Single binary** — Go backend with embedded React frontend, no runtime dependencies

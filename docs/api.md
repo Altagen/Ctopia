@@ -349,6 +349,106 @@ The server pushes a state message immediately on connect, then every 3 seconds, 
 }
 ```
 
+**`pipeline_progress` message** — pushed during and after a pipeline run:
+```json
+{
+  "type": "pipeline_progress",
+  "pipeline_run": {
+    "pipeline_name": "Start Full Stack",
+    "status": "running",
+    "started_at": 1710000000,
+    "finished_at": 0,
+    "steps": [
+      {
+        "index": 0,
+        "name": "Infrastructure",
+        "status": "done",
+        "compose_results": [
+          { "name": "Database", "status": "done", "error": "" },
+          { "name": "Redis",    "status": "done", "error": "" }
+        ]
+      },
+      {
+        "index": 1,
+        "name": "Backend",
+        "status": "running",
+        "compose_results": [
+          { "name": "API",    "status": "running", "error": "" },
+          { "name": "Worker", "status": "pending", "error": "" }
+        ]
+      }
+    ]
+  },
+  "timestamp": 1710000010
+}
+```
+
+Step and compose statuses: `pending` | `running` | `done` | `failed`.
+
+---
+
+## Pipelines
+
+Config-defined pipelines (from `config.yml`) are read-only. Runtime pipelines can be created, edited, and deleted via the API and are persisted to `data/pipelines.json`.
+
+### List pipelines
+```
+GET /api/pipelines
+Authorization: Bearer <token>   (requires pipelines.view)
+```
+Returns an array of pipeline objects. Config pipelines have `"source": "config"`, runtime ones `"source": "runtime"`.
+
+### Create pipeline
+```
+POST /api/pipelines
+Authorization: Bearer <token>   (admin, requires pipelines.manage)
+Content-Type: application/json
+```
+```json
+{
+  "name": "Start Full Stack",
+  "continue_on_error": false,
+  "steps": [
+    {
+      "name": "Infrastructure",
+      "action": "start",
+      "composes": ["Database", "Redis"],
+      "wait": "services_running"
+    },
+    {
+      "name": "Backend",
+      "action": "start",
+      "composes": ["API", "Worker"],
+      "wait": "delay",
+      "delay_seconds": 5
+    }
+  ]
+}
+```
+Returns `201 Created` with the created pipeline object.
+
+### Update pipeline
+```
+PUT /api/pipelines/{name}
+Authorization: Bearer <token>   (admin, requires pipelines.manage)
+Content-Type: application/json
+```
+Same body as create. Returns `200 OK` with the updated pipeline. Only runtime pipelines can be updated.
+
+### Delete pipeline
+```
+DELETE /api/pipelines/{name}
+Authorization: Bearer <token>   (admin, requires pipelines.manage)
+```
+Returns `204 No Content`. Only runtime pipelines can be deleted.
+
+### Run pipeline
+```
+POST /api/pipelines/{name}/run
+Authorization: Bearer <token>   (requires pipelines.run)
+```
+Returns `202 Accepted` immediately. Execution progress is streamed via WebSocket `pipeline_progress` messages.
+
 ---
 
 ## Error responses
@@ -372,6 +472,7 @@ All error responses are plain text with an appropriate HTTP status code:
 {
   "containers": { "view": bool, "start": bool, "stop": bool, "restart": bool, "delete": bool },
   "composes":   { "view": bool, "start": bool, "stop": bool, "restart": bool },
-  "images":     { "view": bool, "delete": bool, "prune": bool, "pull": bool }
+  "images":     { "view": bool, "delete": bool, "prune": bool, "pull": bool },
+  "pipelines":  { "view": bool, "run": bool, "manage": bool }
 }
 ```
