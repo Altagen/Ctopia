@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
-import { Container, LayoutGrid, LogOut, LogIn, Boxes, Wifi, WifiOff, Settings, HardDrive } from 'lucide-react'
+import { Container, LayoutGrid, LogOut, LogIn, Boxes, Wifi, WifiOff, Settings, HardDrive, GitBranch } from 'lucide-react'
 import { clsx } from 'clsx'
-import logo from '../assets/ctopia.png'
+import logo from '../assets/ctopia_logo.png'
 import type { FeatureSet } from '../types'
 
 interface Props {
@@ -20,7 +20,8 @@ export default function Sidebar({ connected, onLogout, containerCount, composeCo
     { to: '/', label: 'Overview', icon: LayoutGrid, end: true, show: true },
     { to: '/containers', label: 'Containers', icon: Container, show: true },
     { to: '/composes', label: 'Composes', icon: Boxes, show: features.composes.view },
-    { to: '/images', label: 'Images', icon: HardDrive, show: features.images.view },
+    { to: '/images', label: 'Images', icon: HardDrive, show: features.images?.view },
+    { to: '/pipelines', label: 'Pipelines', icon: GitBranch, show: features.pipelines?.view },
     { to: '/settings', label: 'Settings', icon: Settings, show: isAdmin },
   ]
 

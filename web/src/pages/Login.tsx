@@ -1,13 +1,15 @@
 import { useState, FormEvent } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import { Eye, EyeOff } from 'lucide-react'
-import logo from '../assets/ctopia_logo.png'
+import logo from '../assets/ctopia.png'
 
 interface Props {
   onLogin: (token: string) => void
 }
 
 export default function Login({ onLogin }: Props) {
+  const navigate = useNavigate()
   const [password, setPassword] = useState('')
   const [show, setShow] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -20,7 +22,12 @@ export default function Login({ onLogin }: Props) {
     try {
       const { token } = await api.auth.login(password)
       onLogin(token)
-    } catch {
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message.trim() === 'not configured') {
+        localStorage.removeItem('ctopia_token')
+        navigate('/setup', { replace: true })
+        return
+      }
       setError('Invalid password.')
       setPassword('')
     } finally {
@@ -37,7 +44,7 @@ export default function Login({ onLogin }: Props) {
       <div className="relative z-10 w-full max-w-sm animate-slide-up">
         {/* Logo */}
         <div className="mb-8 flex flex-col items-center gap-3">
-          <img src={logo} alt="Ctopia" className="h-16 w-16 rounded-2xl object-contain" />
+          <img src={logo} alt="Ctopia" className="h-[250px] w-[250px] rounded-2xl object-contain" />
           <div className="text-center">
             <h1 className="gradient-text text-3xl font-bold tracking-tight">Ctopia</h1>
             <p className="mt-1.5 text-sm text-white/35">Sign in to manage your containers.</p>

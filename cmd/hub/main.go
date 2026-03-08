@@ -14,6 +14,7 @@ import (
 	"ctopia/internal/auth"
 	"ctopia/internal/config"
 	"ctopia/internal/docker"
+	"ctopia/internal/pipeline"
 	"ctopia/internal/settings"
 )
 
@@ -47,7 +48,12 @@ func main() {
 	}
 	defer dockerMgr.Close()
 
-	server := api.NewServer(cfg, dockerMgr, authSvc, settingsSvc)
+	pipelineStore, err := pipeline.NewStore(cfg)
+	if err != nil {
+		log.Fatalf("pipeline store: %v", err)
+	}
+
+	server := api.NewServer(cfg, dockerMgr, authSvc, settingsSvc, pipelineStore)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

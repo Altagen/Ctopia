@@ -15,3 +15,23 @@ composes:
     path: /srv/myapp
   - name: "Monitoring"
     path: /srv/monitoring
+
+# Pipelines define ordered execution flows across compose stacks.
+# Each step runs its composes in parallel; steps execute sequentially.
+# pipelines:
+#   - name: "Start Full Stack"
+#     continue_on_error: false
+#     steps:
+#       - name: "Infrastructure"
+#         action: start
+#         composes: ["Database", "Redis"]
+#         wait: services_running   # wait until all services are healthy (default)
+#       - name: "Backend"
+#         action: start
+#         composes: ["API", "Worker"]
+#         wait: immediately        # move to next step as soon as command returns
+#       - name: "Frontend"
+#         action: start
+#         composes: ["Web"]
+#         wait: delay
+#         delay_seconds: 5         # wait 5s before next step

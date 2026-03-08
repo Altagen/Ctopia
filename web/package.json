@@ -1,7 +1,7 @@
 {
   "name": "ctopia-web",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@fontsource/inter": "^5.2.5",
     "clsx": "^2.1.1",
     "framer-motion": "^11.3.2",
     "lucide-react": "^0.395.0",

@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
 import { api } from './lib/api'
 import { WSClient } from './lib/ws'
-import type { AppState, WSMessage, FeatureSet } from './types'
+import type { AppState, WSMessage, FeatureSet, PipelineRunProgress } from './types'
 import Setup from './pages/Setup'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
@@ -11,11 +11,13 @@ const defaultAdminFeatures: FeatureSet = {
   containers: { view: true, start: true, stop: true, restart: true, delete: true },
   composes: { view: true, start: true, stop: true, restart: true },
   images: { view: true, delete: true, prune: true, pull: true },
+  pipelines: { view: true, run: true, manage: true },
 }
 const defaultPublicFeatures: FeatureSet = {
   containers: { view: true, start: false, stop: false, restart: false, delete: false },
   composes: { view: true, start: false, stop: false, restart: false },
   images: { view: false, delete: false, prune: false, pull: false },
+  pipelines: { view: false, run: false, manage: false },
 }
 
 function AppInner() {
@@ -35,12 +37,16 @@ function AppInner() {
     loading: true,
     lastUpdate: null,
   })
+  const [pipelineRun, setPipelineRun] = useState<PipelineRunProgress | null>(null)
 
   const features: FeatureSet = isAdmin ? adminFeatures : publicFeatures
 
   // Bootstrap: check setup + auth status
   useEffect(() => {
     api.setup.status().then(({ configured, authless: al, strict: st, admin_features, public_features }) => {
+      if (!configured) {
+        localStorage.removeItem('ctopia_token')
+      }
       setSetupDone(configured)
       setAuthless(al)
       setStrict(st)
@@ -63,11 +69,13 @@ function AppInner() {
       if (msg.type === 'state') {
         setState(prev => ({
           ...prev,
-          containers: msg.containers,
-          composes: msg.composes,
+          containers: msg.containers ?? [],
+          composes: msg.composes ?? [],
           loading: false,
           lastUpdate: msg.timestamp,
         }))
+      } else if (msg.type === 'pipeline_progress' && msg.pipeline_run) {
+        setPipelineRun(msg.pipeline_run)
       }
     }
 
@@ -126,7 +134,9 @@ function AppInner() {
       <Route
         path="/login"
         element={
-          isAdmin ? <Navigate to="/" replace /> : <Login onLogin={handleLogin} />
+          !setupDone ? <Navigate to="/setup" replace /> :
+          isAdmin ? <Navigate to="/" replace /> :
+          <Login onLogin={handleLogin} />
         }
       />
       <Route
@@ -137,7 +147,7 @@ function AppInner() {
           ) : !authed ? (
             <Navigate to="/login" replace />
           ) : (
-            <Dashboard state={state} onLogout={handleLogout} features={features} isAdmin={isAdmin} />
+            <Dashboard state={state} onLogout={handleLogout} features={features} isAdmin={isAdmin} pipelineRun={pipelineRun} onPipelineRunDismiss={() => setPipelineRun(null)} />
           )
         }
       />

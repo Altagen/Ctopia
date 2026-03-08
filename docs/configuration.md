@@ -128,6 +128,60 @@ For advanced scenarios (relative `env_file` paths, stacks spread across unrelate
 
 ---
 
+### `pipelines`
+| | |
+|---|---|
+| Type | `list` |
+| Default | `[]` |
+
+Pipelines define ordered execution flows across compose stacks. Config-defined pipelines are **read-only** in the UI. Additional pipelines can be created at runtime from the Pipelines page (stored in `data/pipelines.json`).
+
+Each pipeline has:
+
+| Field | Type | Description |
+|---|---|---|
+| `name` | `string` | Display name (must be unique) |
+| `continue_on_error` | `boolean` | If `true`, the pipeline continues even if a step fails. Default: `false` |
+| `steps` | `list` | Ordered list of steps to execute sequentially |
+
+Each step has:
+
+| Field | Type | Description |
+|---|---|---|
+| `name` | `string` | Optional display name |
+| `action` | `string` | `start`, `stop`, or `restart` |
+| `composes` | `list` | One or more compose names (run in parallel within the step) |
+| `wait` | `string` | `services_running` (default), `immediately`, or `delay` |
+| `delay_seconds` | `integer` | Seconds to wait when `wait: delay`. Default: `5` |
+
+**Wait modes:**
+- `services_running` — waits up to 5 minutes until all composes in the step report status `running` (polls every 2 s)
+- `immediately` — moves to the next step as soon as `docker compose` returns
+- `delay` — waits `delay_seconds` after the command returns before proceeding
+
+**Example:**
+```yaml
+pipelines:
+  - name: "Start Full Stack"
+    continue_on_error: false
+    steps:
+      - name: "Infrastructure"
+        action: start
+        composes: ["Database", "Redis"]
+        wait: services_running
+      - name: "Backend"
+        action: start
+        composes: ["API", "Worker"]
+        wait: immediately
+      - name: "Frontend"
+        action: start
+        composes: ["Web"]
+        wait: delay
+        delay_seconds: 5
+```
+
+---
+
 ## Environment variables
 
 | Variable | Description |

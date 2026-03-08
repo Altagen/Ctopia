@@ -24,6 +24,7 @@ Core dashboard, self-hosted, single binary.
 | **CI** (GitHub Actions: lint-go + lint-web on PR/push) | ✅ |
 | **Release** (multi-platform binaries + Docker on semver tag) | ✅ |
 | Multi-host anticipation (`Host` field on models, `agents:` config stub) | ✅ |
+| **Pipelines** — ordered execution flows across compose stacks (sequential steps, parallel actions, wait modes, live WebSocket progress) | ✅ |
 
 ---
 

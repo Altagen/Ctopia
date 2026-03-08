@@ -29,7 +29,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     throw new Error(text || res.statusText)
   }
 
-  if (res.status === 204) return undefined as T
+  if (res.status === 204 || res.status === 202) return undefined as T
   return res.json()
 }
 
@@ -98,5 +98,20 @@ export const api = {
         method: 'POST',
         body: JSON.stringify(patch),
       }),
+  },
+
+  pipelines: {
+    list: () => request<import('../types').Pipeline[]>('/pipelines'),
+    create: (p: Omit<import('../types').Pipeline, 'source'>) =>
+      request<import('../types').Pipeline>('/pipelines', { method: 'POST', body: JSON.stringify(p) }),
+    update: (name: string, p: import('../types').Pipeline) =>
+      request<import('../types').Pipeline>(`/pipelines/${encodeURIComponent(name)}`, {
+        method: 'PUT',
+        body: JSON.stringify(p),
+      }),
+    delete: (name: string) =>
+      request<void>(`/pipelines/${encodeURIComponent(name)}`, { method: 'DELETE' }),
+    run: (name: string) =>
+      request<void>(`/pipelines/${encodeURIComponent(name)}/run`, { method: 'POST' }),
   },
 }

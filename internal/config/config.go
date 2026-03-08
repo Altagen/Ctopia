@@ -8,13 +8,14 @@ import (
 )
 
 type Config struct {
-	Engine   string          `yaml:"engine"`
-	Socket   string          `yaml:"socket"`
-	Port     int             `yaml:"port"`
-	DataDir  string          `yaml:"data_dir"`
-	Auth     AuthConfig      `yaml:"auth"`
-	Composes []ComposeConfig `yaml:"composes"`
-	Agents   []AgentConfig   `yaml:"agents"` // Phase 2 — unused for now
+	Engine    string           `yaml:"engine"`
+	Socket    string           `yaml:"socket"`
+	Port      int              `yaml:"port"`
+	DataDir   string           `yaml:"data_dir"`
+	Auth      AuthConfig       `yaml:"auth"`
+	Composes  []ComposeConfig  `yaml:"composes"`
+	Agents    []AgentConfig    `yaml:"agents"` // Phase 2 — unused for now
+	Pipelines []PipelineConfig `yaml:"pipelines"`
 }
 
 type AuthConfig struct {
@@ -25,10 +26,23 @@ type AuthConfig struct {
 	Strict bool `yaml:"strict"`
 }
 
-
 type ComposeConfig struct {
 	Name string `yaml:"name"`
 	Path string `yaml:"path"`
+}
+
+type PipelineStepConfig struct {
+	Name         string   `yaml:"name"`
+	Action       string   `yaml:"action"`
+	Composes     []string `yaml:"composes"`
+	Wait         string   `yaml:"wait"`
+	DelaySeconds int      `yaml:"delay_seconds,omitempty"`
+}
+
+type PipelineConfig struct {
+	Name            string               `yaml:"name"`
+	ContinueOnError bool                 `yaml:"continue_on_error"`
+	Steps           []PipelineStepConfig `yaml:"steps"`
 }
 
 // AgentConfig describes a remote agent endpoint. Parsed but unused until Phase 2.

@@ -1,6 +1,27 @@
-# Ctopia
+<div align="center">
+  <img src="assets/ctopia_logo.png" alt="Ctopia Logo" width="200"/>
 
-A lightweight, self-hosted Docker dashboard. Manage containers, compose stacks, and images from a clean web UI — with real-time updates via WebSocket, granular feature flags, and optional authentication.
+  <h1>Ctopia</h1>
+
+  <p>Lightweight, self-hosted Docker dashboard.</p>
+
+  <p>
+    <a href="https://github.com/Altagen/Ctopia/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/Altagen/Ctopia/ci.yml?label=CI" alt="CI" /></a>
+    <a href="https://github.com/Altagen/Ctopia/releases/latest"><img src="https://img.shields.io/github/v/release/Altagen/Ctopia" alt="Latest Release" /></a>
+    <a href="https://ghcr.io/altagen/ctopia"><img src="https://img.shields.io/badge/docker-ghcr.io-blue" alt="Docker" /></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License" /></a>
+  </p>
+</div>
+
+Manage containers, compose stacks, and images from a clean web UI — with real-time updates via WebSocket, granular feature flags, and optional authentication.
+
+---
+
+## Screenshots
+
+![Dashboard](assets/dashboard-ctopia.png)
+
+![Settings](assets/settings-ctopia.png)
 
 ---
 
@@ -10,17 +31,31 @@ A lightweight, self-hosted Docker dashboard. Manage containers, compose stacks, 
 - **Container management** — start, stop, restart, delete
 - **Compose stacks** — manage multi-service stacks declared in `config.yml`
 - **Image management** — list, delete, prune unused, pull by reference
+- **Pipelines** — define ordered execution flows across compose stacks with sequential steps, parallel actions, and configurable wait modes (`services_running`, `delay`, `immediately`)
 - **Granular permissions** — per-action feature flags for admins and public (authless) users
 - **Authless mode** — expose a read-only (or custom) view without requiring login
 - **Single binary** — Go backend with embedded React frontend, no runtime dependencies
 
----
+## Tech Stack
 
-## Screenshots
+- **Backend**: Go 1.24 (with embedded frontend via `go:embed`)
+- **Frontend**: React 18, TypeScript, Vite, Tailwind CSS v3
+- **HTTP Router**: go-chi/chi v5
+- **WebSocket**: Gorilla WebSocket
+- **Auth**: JWT (30-day tokens) + bcrypt
+- **Docker**: Docker SDK v28
+- **Database**: SQLite
+- **Build System**: Task (go-task)
 
-![Dashboard](assets/dashboard-ctopia.png)
+## Platform Support
 
-![Settings](assets/settings-ctopia.png)
+| Platform | Binary | Docker |
+|----------|--------|--------|
+| Linux x86_64 | ✅ | ✅ |
+| Linux ARM64 | ✅ | ✅ |
+| macOS Intel | ✅ | — |
+| macOS Apple Silicon | ✅ | — |
+| Windows | ❌ | — |
 
 ---
 
@@ -43,7 +78,7 @@ docker run -d \
   -v $(pwd)/config.yml:/app/config.yml:ro \
   -v ctopia-data:/app/data \
   --group-add $DOCKER_GID \
-  ctopia:latest
+  ghcr.io/altagen/ctopia:latest
 ```
 
 Or with Docker Compose:
@@ -53,21 +88,17 @@ cp config.example.yml config.yml
 DOCKER_GID=$(stat -c '%g' /var/run/docker.sock) docker compose up -d
 ```
 
-Open **http://localhost:8080** — you'll be guided through first-time setup to set your admin password.
+Open **http://localhost:8080** — you'll be guided through first-time setup.
 
 ### Build from source
 
 **Prerequisites:** Go 1.24+, Node.js 22+, [Task](https://taskfile.dev)
 
 ```bash
-# Install Task (if not already installed)
-sh -c "$(curl -ssL https://taskfile.dev/install.sh)" -- -d -b ~/.local/bin
-
 git clone https://github.com/Altagen/Ctopia
-cd ctopia
-
+cd Ctopia
 task install-web   # npm install
-task build         # builds frontend then embeds it into the Go binary
+task build         # builds frontend + embeds into Go binary
 ./dist/ctopia
 ```
 
@@ -75,7 +106,7 @@ task build         # builds frontend then embeds it into the Go binary
 
 ## Configuration
 
-Ctopia reads `config.yml` from the working directory by default. Override with the `CTOPIA_CONFIG` environment variable.
+Ctopia reads `config.yml` from the working directory by default. Override with `CTOPIA_CONFIG`.
 
 ```yaml
 engine: docker
@@ -89,8 +120,6 @@ auth:
 composes:
   - name: "My App"
     path: /srv/myapp
-  - name: "Monitoring"
-    path: /srv/monitoring
 ```
 
 See [docs/configuration.md](docs/configuration.md) for the full reference.
@@ -100,46 +129,27 @@ See [docs/configuration.md](docs/configuration.md) for the full reference.
 ## Development
 
 ```bash
-# Install frontend deps once
 task install-web
 
-# Terminal 1 — Go API with hot-reload
-# Requires: go install github.com/air-verse/air@latest
+# Terminal 1 — Go API with hot-reload (requires air)
 task dev-api
 
 # Terminal 2 — Vite dev server (proxies /api and /ws to :8080)
 task dev-web
 
-# Or both at once:
+# Or both at once
 task dev
 ```
 
-The Vite dev server runs on **http://localhost:5173** and proxies API/WS calls to Go on `:8080`.
+The Vite dev server runs on **http://localhost:5173**.
 
----
-
-## Docker Build
+## Build
 
 ```bash
-task docker          # builds ctopia:latest
-task docker-push     # builds + pushes
+task build         # single binary
+task docker        # build ctopia:latest Docker image
+task docker-push   # build + push to ghcr.io
 ```
-
-You can inject the JWT signing key at runtime instead of relying on the on-disk secret:
-
-```bash
-docker run -d \
-  --name ctopia \
-  -e CTOPIA_JWT_SECRET=<your-secret> \
-  ...
-```
-
-Or via Docker Compose secrets — see the comment in `docker-compose.yml`.
-
-The multi-stage Dockerfile:
-1. **node:22-alpine** — builds the React + Vite frontend
-2. **golang:1.24-alpine** — compiles the Go binary with the frontend embedded via `go:embed`
-3. **alpine:3.21** — minimal runtime image (~15 MB)
 
 ---
 
@@ -150,42 +160,33 @@ ctopia/
 ├── cmd/hub/           # Binary entry point (main.go)
 ├── internal/
 │   ├── api/           # HTTP server, routes, middleware, WebSocket
-│   ├── auth/          # bcrypt password + JWT (30-day tokens)
+│   ├── auth/          # bcrypt password + JWT
 │   ├── config/        # YAML config loading
-│   ├── docker/        # Docker SDK v28 wrapper
-│   ├── models/        # Shared Go types (Container, ComposeStack, …)
-│   └── settings/      # Runtime settings persisted to data/settings.json
+│   ├── docker/        # Docker SDK wrapper
+│   ├── models/        # Shared Go types
+│   └── settings/      # Runtime settings
 ├── web/               # React 18 + TypeScript + Vite + Tailwind v3
-│   ├── src/
-│   └── web.go         # go:embed entry point
+│   └── src/
 ├── examples/
 │   └── test-stack/    # Sample compose stack for local testing
 ├── docs/
-│   ├── configuration.md
-│   └── api.md
 ├── Dockerfile
-├── docker-compose.yml
 └── config.example.yml
 ```
 
----
+## Documentation
 
-## API & WebSocket
-
-See [docs/api.md](docs/api.md) for the full REST and WebSocket reference.
-
----
-
-## Compose stacks — volume mounting guide
-
-Ctopia executes `docker compose` with the working directory set to each stack's `path`, so relative paths in your compose files work exactly as in standalone usage. See [docs/compose-stacks.md](docs/compose-stacks.md) for all scenarios:
-
-- Multiple stacks at unrelated filesystem locations
-- Relative `env_file` and config file references
-- Container bind mounts (handled by the Docker daemon — no extra mounting needed)
+- [Configuration](docs/configuration.md) — Full configuration reference
+- [API](docs/api.md) — REST and WebSocket API reference
+- [Compose Stacks](docs/compose-stacks.md) — Volume mounting guide
+- [Roadmap](docs/roadmap.md) — Phase 1 status and Phase 2 backlog
 
 ---
 
-## Roadmap
+## Contributing
 
-See [docs/roadmap.md](docs/roadmap.md) for the full Phase 1 status and Phase 2 backlog.
+Issues and bug reports are welcome on [GitHub](https://github.com/Altagen/Ctopia/issues).
+
+## License
+
+MIT License — see [LICENSE](LICENSE) for details.

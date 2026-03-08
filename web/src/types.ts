@@ -69,17 +69,66 @@ export interface ImageFeatures {
   pull: boolean
 }
 
+export interface PipelineFeatures {
+  view: boolean
+  run: boolean
+  manage: boolean
+}
+
 export interface FeatureSet {
   containers: ContainerFeatures
   composes: ComposeFeatures
   images: ImageFeatures
+  pipelines: PipelineFeatures
+}
+
+// --- Pipeline ---
+
+export type WaitMode = 'immediately' | 'services_running' | 'delay'
+
+export interface PipelineStep {
+  name: string
+  action: 'start' | 'stop' | 'restart'
+  composes: string[]
+  wait: WaitMode
+  delay_seconds?: number
+}
+
+export interface Pipeline {
+  name: string
+  source: 'config' | 'runtime'
+  continue_on_error: boolean
+  steps: PipelineStep[]
+}
+
+export interface ComposeActionResult {
+  name: string
+  status: 'pending' | 'running' | 'done' | 'failed'
+  error?: string
+}
+
+export interface PipelineStepResult {
+  index: number
+  name: string
+  status: 'pending' | 'running' | 'done' | 'failed'
+  compose_results: ComposeActionResult[]
+  error?: string
+}
+
+export interface PipelineRunProgress {
+  pipeline_name: string
+  status: 'running' | 'done' | 'failed'
+  steps: PipelineStepResult[]
+  started_at: number
+  finished_at?: number
 }
 
 export interface WSMessage {
-  type: 'state'
-  containers: Container[]
-  composes: ComposeStack[]
+  type: string
+  containers?: Container[]
+  composes?: ComposeStack[]
   timestamp: number
+  pipeline_run?: PipelineRunProgress
 }
 
 export interface AppSettings {

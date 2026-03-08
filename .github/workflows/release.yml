@@ -5,8 +5,11 @@ on:
     tags:
       - '[0-9]+.[0-9]+.[0-9]+*'
 
+permissions:
+  contents: write
+
 jobs:
-  # Build the React frontend and expose it as an artifact
+  # Build the React frontend
   build-web:
     name: 🎨 Frontend
     runs-on: ubuntu-latest
@@ -31,7 +34,7 @@ jobs:
           path: web/dist/
           retention-days: 1
 
-  # Cross-compile Go binaries for all target platforms
+  # Cross-compile Go binaries
   build-binaries:
     name: 🔨 Build (${{ matrix.name }})
     needs: build-web
@@ -74,10 +77,52 @@ jobs:
           path: ctopia-hub-*
           retention-days: 1
 
-  # Create GitHub release with changelog, binaries and checksums
+  # Generate SBOM (npm + Go)
+  sbom:
+    name: 📋 Generate SBOM
+    needs: build-web
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install dependencies (npm)
+        working-directory: web
+        run: npm ci
+
+      - name: Generate npm SBOM
+        working-directory: web
+        run: |
+          VERSION="${{ github.ref_name }}"
+          npx @cyclonedx/cyclonedx-npm --output-format JSON --output-file ../sbom-npm-${VERSION}.json
+
+      - name: Install cyclonedx-gomod
+        run: go install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@latest
+
+      - name: Generate Go SBOM
+        run: |
+          VERSION="${{ github.ref_name }}"
+          cyclonedx-gomod mod -json -output sbom-go-${VERSION}.json
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom-*.json
+          retention-days: 7
+
+  # Create GitHub release with changelog, binaries, SBOM and checksums
   release:
     name: 🚀 Release
-    needs: build-binaries
+    needs: [build-binaries, sbom]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -93,10 +138,16 @@ jobs:
           path: release-assets/
           merge-multiple: true
 
+      - name: Download SBOM
+        uses: actions/download-artifact@v4
+        with:
+          name: sbom
+          path: release-assets/
+
       - name: Generate checksums
         run: |
           cd release-assets
-          sha256sum * > SHA256SUMS.txt
+          sha256sum ctopia-hub-* sbom-*.json > SHA256SUMS.txt
           cat SHA256SUMS.txt
 
       - name: Generate changelog
@@ -121,7 +172,7 @@ jobs:
             $PRERELEASE_FLAG \
             release-assets/*
 
-  # Build and push multi-arch Docker image from pre-compiled linux binaries
+  # Build and push multi-arch Docker image
   docker:
     name: 🐳 Docker
     needs: build-binaries

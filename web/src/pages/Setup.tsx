@@ -85,7 +85,7 @@ export default function Setup({ onComplete, strict }: Props) {
       <div className="relative z-10 w-full max-w-md animate-slide-up">
         {/* Logo */}
         <div className="mb-8 flex flex-col items-center gap-3">
-          <img src={logo} alt="Ctopia" className="h-16 w-16 rounded-2xl object-contain" />
+          <img src={logo} alt="Ctopia" className="h-[250px] w-[250px] rounded-2xl object-contain" />
           <div className="text-center">
             <h1 className="gradient-text text-3xl font-bold tracking-tight">Ctopia</h1>
             <p className="mt-1.5 text-sm text-white/35">Set up your admin password to get started.</p>
