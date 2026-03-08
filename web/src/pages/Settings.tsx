@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
 import {
   ShieldOff, Shield, AlertTriangle, Loader2, CheckCircle2, Trash2,
-  Container, Boxes, HardDrive, ShieldCheck, Globe, ChevronDown, KeyRound,
+  Container, Boxes, HardDrive, ShieldCheck, Globe, ChevronDown, KeyRound, GitBranch,
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import toast from 'react-hot-toast'
 import { api } from '../lib/api'
-import type { AppSettings, ContainerFeatures, ComposeFeatures, ImageFeatures } from '../types'
+import type { AppSettings, ContainerFeatures, ComposeFeatures, ImageFeatures, PipelineFeatures } from '../types'
 
 export default function Settings() {
   const [settings, setSettings] = useState<AppSettings | null>(null)
@@ -42,7 +42,7 @@ export default function Settings() {
 
   const toggleFeature = async (
     profile: 'admin_features' | 'public_features',
-    section: 'containers' | 'composes' | 'images',
+    section: 'containers' | 'composes' | 'images' | 'pipelines',
     key: string,
   ) => {
     if (!settings) return
@@ -64,7 +64,7 @@ export default function Settings() {
 
   const toggleAll = async (
     profile: 'admin_features' | 'public_features',
-    section: 'containers' | 'composes' | 'images',
+    section: 'containers' | 'composes' | 'images' | 'pipelines',
     keys: string[],
     value: boolean,
   ) => {
@@ -304,6 +304,12 @@ const imageActions: { key: keyof ImageFeatures; label: string }[] = [
   { key: 'pull',   label: 'Pull' },
 ]
 
+const pipelineActions: { key: keyof PipelineFeatures; label: string }[] = [
+  { key: 'view',   label: 'View' },
+  { key: 'run',    label: 'Run' },
+  { key: 'manage', label: 'Manage (create/edit/delete)' },
+]
+
 function GranularFeaturesSection({
   features,
   onToggle,
@@ -311,8 +317,8 @@ function GranularFeaturesSection({
   disabled,
 }: {
   features: AppSettings['admin_features']
-  onToggle: (section: 'containers' | 'composes' | 'images', key: string) => void
-  onToggleAll: (section: 'containers' | 'composes' | 'images', keys: string[], value: boolean) => void
+  onToggle: (section: 'containers' | 'composes' | 'images' | 'pipelines', key: string) => void
+  onToggleAll: (section: 'containers' | 'composes' | 'images' | 'pipelines', keys: string[], value: boolean) => void
   disabled: boolean
 }) {
   return (
@@ -347,6 +353,16 @@ function GranularFeaturesSection({
         onToggleAll={value => onToggleAll('images', imageActions.map(a => a.key), value)}
         disabled={disabled}
       />
+      <FeatureCard
+        icon={GitBranch}
+        title="Pipelines"
+        color="teal"
+        actions={pipelineActions}
+        values={(features.pipelines ?? {}) as unknown as Record<string, boolean>}
+        onToggle={key => onToggle('pipelines', key)}
+        onToggleAll={value => onToggleAll('pipelines', pipelineActions.map(a => a.key), value)}
+        disabled={disabled}
+      />
     </div>
   )
 }
@@ -373,6 +389,13 @@ const colorMap = {
     dot:       'bg-violet-500',
     title:     'text-violet-400',
   },
+  teal: {
+    iconBg:    'bg-teal-500/15 border-teal-500/25',
+    iconText:  'text-teal-400',
+    iconBgOff: 'bg-white/[0.04] border-white/[0.08]',
+    dot:       'bg-teal-500',
+    title:     'text-teal-400',
+  },
 }
 
 function FeatureCard({
@@ -387,7 +410,7 @@ function FeatureCard({
 }: {
   icon: React.ElementType
   title: string
-  color: 'blue' | 'orange' | 'violet'
+  color: 'blue' | 'orange' | 'violet' | 'teal'
   actions: { key: string; label: string }[]
   values: Record<string, boolean>
   onToggle: (key: string) => void
@@ -543,6 +566,7 @@ const toggleColors = {
   blue:   'bg-blue-500/80 border-blue-400/40',
   orange: 'bg-orange-500/80 border-orange-400/40',
   violet: 'bg-violet-500/80 border-violet-400/40',
+  teal:   'bg-teal-500/80 border-teal-400/40',
 }
 
 function Toggle({
@@ -552,7 +576,7 @@ function Toggle({
   onChange: () => void
   disabled: boolean
   danger?: boolean
-  color?: 'blue' | 'orange' | 'violet'
+  color?: 'blue' | 'orange' | 'violet' | 'teal'
 }) {
   return (
     <button

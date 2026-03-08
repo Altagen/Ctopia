@@ -1,22 +1,29 @@
-import { useState } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
-import { Search, Container as ContainerIcon, Boxes, CheckCircle2, XCircle } from 'lucide-react'
-import type { AppState, FeatureSet, ContainerFeatures, ComposeFeatures } from '../types'
+import { Search, Container as ContainerIcon, Boxes, CheckCircle2, XCircle, GitBranch, Plus } from 'lucide-react'
+import toast from 'react-hot-toast'
+import type { AppState, FeatureSet, ContainerFeatures, ComposeFeatures, PipelineFeatures, Pipeline, PipelineRunProgress } from '../types'
 import Sidebar from '../components/Sidebar'
 import ThemeToggle from '../components/ThemeToggle'
 import ContainerCard from '../components/ContainerCard'
 import ComposeCard from '../components/ComposeCard'
+import PipelineCard from '../components/PipelineCard'
+import PipelineEditor from '../components/PipelineEditor'
+import PipelineRunOverlay from '../components/PipelineRunOverlay'
 import Settings from './Settings'
 import Images from './Images'
+import { api } from '../lib/api'
 
 interface Props {
   state: AppState
   onLogout: () => void
   features: FeatureSet
   isAdmin: boolean
+  pipelineRun: PipelineRunProgress | null
+  onPipelineRunDismiss: () => void
 }
 
-export default function Dashboard({ state, onLogout, features, isAdmin }: Props) {
+export default function Dashboard({ state, onLogout, features, isAdmin, pipelineRun, onPipelineRunDismiss }: Props) {
   return (
     <div className="relative flex h-full overflow-hidden">
       <div className="blob-1" />
@@ -44,11 +51,28 @@ export default function Dashboard({ state, onLogout, features, isAdmin }: Props)
             <Route path="/"           element={<Overview state={state} features={features} />} />
             <Route path="/containers" element={<ContainersPage state={state} containerPerms={features.containers} />} />
             <Route path="/composes"   element={<ComposesPage state={state} composePerms={features.composes} />} />
-            {features.images.view && <Route path="/images" element={<Images perms={features.images} />} />}
+            {features.images?.view && <Route path="/images" element={<Images perms={features.images} />} />}
+            {features.pipelines?.view && (
+              <Route
+                path="/pipelines"
+                element={
+                  <PipelinesPage
+                    perms={features.pipelines}
+                    pipelineRun={pipelineRun}
+                    composeNames={state.composes.map(s => s.name)}
+                  />
+                }
+              />
+            )}
             <Route path="/settings"   element={isAdmin ? <Settings /> : <Navigate to="/" replace />} />
           </Routes>
         </div>
       </main>
+
+      {/* Pipeline run overlay */}
+      {pipelineRun && (
+        <PipelineRunOverlay run={pipelineRun} onDismiss={onPipelineRunDismiss} />
+      )}
     </div>
   )
 }
@@ -201,6 +225,118 @@ function ComposesPage({ state, composePerms }: { state: AppState; composePerms: 
   )
 }
 
+// --- Pipelines Page ---
+
+function PipelinesPage({ perms, pipelineRun, composeNames }: {
+  perms: PipelineFeatures
+  pipelineRun: PipelineRunProgress | null
+  composeNames: string[]
+}) {
+  const [pipelines, setPipelines] = useState<Pipeline[]>([])
+  const [loading, setLoading] = useState(true)
+  const [editorTarget, setEditorTarget] = useState<Pipeline | 'new' | null>(null)
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  const fetchPipelines = useCallback(() => {
+    setRefreshKey(k => k + 1)
+  }, [])
+
+  useEffect(() => {
+    setLoading(true)
+    api.pipelines.list()
+      .then(setPipelines)
+      .catch(() => toast.error('Failed to load pipelines'))
+      .finally(() => setLoading(false))
+  }, [refreshKey])
+
+  const handleRun = async (name: string) => {
+    try {
+      await api.pipelines.run(name)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to start pipeline')
+    }
+  }
+
+  const handleDelete = async (name: string) => {
+    if (!confirm(`Delete pipeline "${name}"?`)) return
+    try {
+      await api.pipelines.delete(name)
+      toast.success('Pipeline deleted')
+      fetchPipelines()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete')
+    }
+  }
+
+  const handleSubmit = async (p: Omit<Pipeline, 'source'>) => {
+    if (editorTarget === 'new') {
+      await api.pipelines.create(p)
+      toast.success('Pipeline created')
+    } else if (editorTarget) {
+      await api.pipelines.update(editorTarget.name, { ...p, source: 'runtime' })
+      toast.success('Pipeline updated')
+    }
+  }
+
+  return (
+    <div className="flex-1 overflow-y-auto p-6">
+      <div className="mb-6 flex items-end justify-between">
+        <PageHeader
+          title="Pipelines"
+          subtitle={`${pipelines.length} pipeline${pipelines.length !== 1 ? 's' : ''} defined`}
+          lastUpdate={null}
+          icon={GitBranch}
+          color="teal"
+        />
+        {perms.manage && (
+          <button
+            onClick={() => setEditorTarget('new')}
+            className="flex items-center gap-1.5 rounded-xl border border-teal-500/25 bg-teal-500/10 px-3 py-1.5 text-sm font-medium text-teal-400 transition hover:border-teal-400/40 hover:bg-teal-500/20"
+          >
+            <Plus className="h-4 w-4" />
+            New pipeline
+          </button>
+        )}
+      </div>
+
+      {loading ? (
+        <LoadingSpinner />
+      ) : pipelines.length === 0 ? (
+        <EmptyState
+          icon={GitBranch}
+          title="No pipelines"
+          desc="Define pipelines in config.yml or create one via the UI."
+          code={`pipelines:\n  - name: "Start Full Stack"\n    steps:\n      - action: start\n        composes: ["App"]`}
+        />
+      ) : (
+        <div className="grid gap-2 sm:grid-cols-2">
+          {pipelines.map(p => (
+            <PipelineCard
+              key={p.name}
+              pipeline={p}
+              perms={perms}
+              currentRun={pipelineRun?.pipeline_name === p.name ? pipelineRun : undefined}
+              onRun={() => handleRun(p.name)}
+              onEdit={() => setEditorTarget(p)}
+              onDelete={() => handleDelete(p.name)}
+            />
+          ))}
+        </div>
+      )}
+
+      {editorTarget !== null && (
+        <PipelineEditor
+          pipeline={editorTarget === 'new' ? undefined : editorTarget}
+          composeNames={composeNames}
+          onClose={() => setEditorTarget(null)}
+          onSave={() => { setEditorTarget(null); fetchPipelines() }}
+          onSubmit={handleSubmit}
+        />
+      )}
+    </div>
+  )
+}
+
 // --- Shared sub-components ---
 
 function PageHeader({ title, subtitle, lastUpdate, icon: Icon, color }: {
@@ -208,9 +344,9 @@ function PageHeader({ title, subtitle, lastUpdate, icon: Icon, color }: {
   subtitle: string
   lastUpdate: number | null
   icon?: React.ElementType
-  color?: 'blue' | 'orange'
+  color?: 'blue' | 'orange' | 'teal'
 }) {
-  const titleColor = color === 'blue' ? 'text-blue-400' : color === 'orange' ? 'text-orange-400' : 'text-white'
+  const titleColor = color === 'blue' ? 'text-blue-400' : color === 'orange' ? 'text-orange-400' : color === 'teal' ? 'text-teal-400' : 'text-white'
   return (
     <div className="mb-6 flex items-end justify-between">
       <div>
