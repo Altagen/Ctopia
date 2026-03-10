@@ -16,10 +16,24 @@ type Executor struct {
 	docker    *docker.Manager
 	broadcast func([]byte)
 	pushState func()
+
+	mu        sync.RWMutex
+	activeRun *models.PipelineRunProgress
 }
 
 func NewExecutor(d *docker.Manager, broadcast func([]byte), pushState func()) *Executor {
 	return &Executor{docker: d, broadcast: broadcast, pushState: pushState}
+}
+
+// GetActiveRun returns the current pipeline run progress (nil if none running).
+func (e *Executor) GetActiveRun() *models.PipelineRunProgress {
+	e.mu.RLock()
+	defer e.mu.RUnlock()
+	if e.activeRun == nil {
+		return nil
+	}
+	cp := *e.activeRun
+	return &cp
 }
 
 // Run executes a pipeline sequentially, composes within each step run in parallel.
@@ -59,6 +73,12 @@ func (e *Executor) Run(ctx context.Context, p models.Pipeline, removeVolumes boo
 			wg.Add(1)
 			go func(j int, name string) {
 				defer wg.Done()
+
+				// Mark this compose as running before starting the action
+				mu.Lock()
+				progress.Steps[i].ComposeResults[j] = models.ComposeActionResult{Name: name, Status: "running"}
+				e.emit(progress)
+				mu.Unlock()
 
 				actionCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 				defer cancel()
@@ -120,8 +140,16 @@ func (e *Executor) Run(ctx context.Context, p models.Pipeline, removeVolumes boo
 			case models.WaitImmediately:
 				// move immediately to next step
 			default: // WaitServicesRunning or empty (default)
-				if err := e.waitServicesRunning(ctx, step.Composes); err != nil {
+				var waitErr error
+				if step.Action == "stop" {
+					// After stopping, wait for services to be fully down
+					waitErr = e.waitServicesStopped(ctx, step.Composes)
+				} else {
+					waitErr = e.waitServicesRunning(ctx, step.Composes)
+				}
+				if waitErr != nil {
 					if !p.ContinueOnError {
+						progress.Steps[i].Error = waitErr.Error()
 						progress.Status = "failed"
 						progress.FinishedAt = time.Now().Unix()
 						e.emit(progress)
@@ -178,7 +206,52 @@ func (e *Executor) waitServicesRunning(ctx context.Context, composes []string) e
 	return fmt.Errorf("timeout: services did not reach running state within 5 minutes")
 }
 
+// waitServicesStopped polls compose stacks every 2s until all named stacks have no
+// running services, with a 2-minute timeout.
+func (e *Executor) waitServicesStopped(ctx context.Context, composes []string) error {
+	deadline := time.Now().Add(2 * time.Minute)
+
+	for time.Now().Before(deadline) {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(2 * time.Second):
+		}
+
+		stacks, err := e.docker.GetComposeStacks(ctx)
+		if err != nil {
+			continue
+		}
+
+		stackByName := make(map[string]models.ComposeStack, len(stacks))
+		for _, s := range stacks {
+			stackByName[s.Name] = s
+		}
+
+		allStopped := true
+		for _, name := range composes {
+			s, ok := stackByName[name]
+			if ok && s.Status == "running" {
+				allStopped = false
+				break
+			}
+		}
+
+		if allStopped {
+			return nil
+		}
+	}
+
+	return fmt.Errorf("timeout: services did not stop within 2 minutes")
+}
+
 func (e *Executor) emit(progress models.PipelineRunProgress) {
+	// Store the latest run for reconnecting clients
+	e.mu.Lock()
+	cp := progress
+	e.activeRun = &cp
+	e.mu.Unlock()
+
 	msg := struct {
 		Type        string                     `json:"type"`
 		PipelineRun models.PipelineRunProgress `json:"pipeline_run"`
