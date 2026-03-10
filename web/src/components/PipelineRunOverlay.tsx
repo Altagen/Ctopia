@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { X, CheckCircle2, XCircle, Loader2, Circle } from 'lucide-react'
 import { clsx } from 'clsx'
 import type { PipelineRunProgress, PipelineStepResult, ComposeActionResult } from '../types'
@@ -9,12 +9,22 @@ interface Props {
 }
 
 export default function PipelineRunOverlay({ run, onDismiss }: Props) {
+  const [countdown, setCountdown] = useState(3)
+  const onDismissRef = useRef(onDismiss)
+  useEffect(() => { onDismissRef.current = onDismiss })
+
   useEffect(() => {
-    if (run.status === 'done') {
-      const timer = setTimeout(onDismiss, 3000)
-      return () => clearTimeout(timer)
-    }
-  }, [run.status, onDismiss])
+    if (run.status !== 'done') return
+    setCountdown(3)
+    const interval = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) { clearInterval(interval); return 0 }
+        return prev - 1
+      })
+    }, 1000)
+    const timer = setTimeout(() => onDismissRef.current(), 3000)
+    return () => { clearInterval(interval); clearTimeout(timer) }
+  }, [run.status])
 
   return (
     <div className="fixed bottom-5 right-5 z-50 w-[380px] max-h-[80vh] flex flex-col rounded-2xl border border-white/[0.08] bg-[#0d0d0f] modal-panel shadow-2xl overflow-hidden">
@@ -47,6 +57,8 @@ export default function PipelineRunOverlay({ run, onDismiss }: Props) {
               step={step}
               index={i}
               isLast={i === run.steps.length - 1}
+              nextStatus={run.steps[i + 1]?.status}
+              prevStatus={run.steps[i - 1]?.status}
             />
           ))}
         </div>
@@ -55,29 +67,34 @@ export default function PipelineRunOverlay({ run, onDismiss }: Props) {
       {/* Footer */}
       {run.status === 'done' && (
         <div className="border-t border-white/[0.06] px-4 py-2 text-center text-[11px] text-white/30">
-          Closing in 3s…
+          Closing in <span className="tabular-nums text-white/50">{countdown}</span>…
         </div>
       )}
     </div>
   )
 }
 
-function StepNode({ step, index, isLast }: { step: PipelineStepResult; index: number; isLast: boolean }) {
+function StepNode({ step, index, isLast, nextStatus, prevStatus }: { step: PipelineStepResult; index: number; isLast: boolean; nextStatus?: string; prevStatus?: string }) {
   const active = step.status === 'running' || step.status === 'done' || step.status === 'failed'
+  // This step is "about to run": previous step just finished, we're in the dead time before the next emit
+  const isNext = step.status === 'pending' && prevStatus === 'done'
+
+  // Color the connector line blue when this step just finished and the next is about to run,
+  // so the transition feels continuous instead of showing a dead white gap.
+  const connectorColor =
+    step.status === 'running' ? 'bg-blue-500/40' :
+    step.status === 'failed'  ? 'bg-red-500/40' :
+    step.status === 'done' && nextStatus === 'pending' ? 'bg-blue-500/40' :
+    step.status === 'done'    ? 'bg-emerald-500/40' :
+                                'bg-white/[0.08]'
 
   return (
     <div className="flex gap-3">
       {/* Left rail: circle + connector line */}
       <div className="flex flex-col items-center">
-        <StepCircle status={step.status} />
+        <StepCircle status={step.status} isNext={isNext} />
         {!isLast && (
-          <div className={clsx(
-            'w-px flex-1 mt-1',
-            step.status === 'done'   ? 'bg-emerald-500/40' :
-            step.status === 'failed' ? 'bg-red-500/40' :
-            step.status === 'running'? 'bg-blue-500/40' :
-                                      'bg-white/[0.08]',
-          )} style={{ minHeight: '16px' }} />
+          <div className={clsx('w-px flex-1 mt-1', connectorColor)} style={{ minHeight: '16px' }} />
         )}
       </div>
 
@@ -153,7 +170,7 @@ function ComposeRow({ cr }: { cr: ComposeActionResult }) {
   )
 }
 
-function StepCircle({ status }: { status: string }) {
+function StepCircle({ status, isNext }: { status: string; isNext?: boolean }) {
   const base = 'flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-all'
   if (status === 'running') {
     return (
@@ -176,7 +193,14 @@ function StepCircle({ status }: { status: string }) {
       </span>
     )
   }
-  // pending
+  // pending — highlight in blue if this step is next in line
+  if (isNext) {
+    return (
+      <span className={clsx(base, 'border-blue-400/50 bg-blue-500/[0.07]')}>
+        <Circle className="h-2 w-2 text-blue-400/60" />
+      </span>
+    )
+  }
   return (
     <span className={clsx(base, 'border-white/[0.12] bg-transparent')}>
       <Circle className="h-2 w-2 text-white/20" />

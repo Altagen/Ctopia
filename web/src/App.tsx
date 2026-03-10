@@ -74,6 +74,10 @@ function AppInner() {
           loading: false,
           lastUpdate: msg.timestamp,
         }))
+        // Restore pipeline overlay on reconnect if a run is still active
+        if (msg.pipeline_run && msg.pipeline_run.status === 'running') {
+          setPipelineRun(msg.pipeline_run)
+        }
       } else if (msg.type === 'pipeline_progress' && msg.pipeline_run) {
         setPipelineRun(msg.pipeline_run)
       }

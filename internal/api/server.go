@@ -641,10 +641,11 @@ func (s *Server) pushState() {
 	}
 
 	msg := models.WSMessage{
-		Type:       "state",
-		Containers: containers,
-		Composes:   composes,
-		Timestamp:  time.Now().Unix(),
+		Type:        "state",
+		Containers:  containers,
+		Composes:    composes,
+		Timestamp:   time.Now().Unix(),
+		PipelineRun: s.executor.GetActiveRun(),
 	}
 
 	data, err := json.Marshal(msg)

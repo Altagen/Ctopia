@@ -27,6 +27,16 @@ export default function PipelineEditor({ pipeline, composeNames, onClose, onSave
   )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const stepRefs = useRef<(HTMLDivElement | null)[]>([])
+
+  const addStep = () => {
+    setSteps(prev => [...prev, emptyStep()])
+  }
+
+  useEffect(() => {
+    const last = stepRefs.current[steps.length - 1]
+    if (last) last.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  }, [steps.length])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -70,7 +80,7 @@ export default function PipelineEditor({ pipeline, composeNames, onClose, onSave
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-      <div className="flex w-full max-w-2xl flex-col rounded-2xl border border-white/[0.08] bg-[#0d0d0f] modal-panel shadow-2xl">
+      <div className="flex w-full max-w-2xl flex-col rounded-2xl border border-white/[0.08] bg-[#0d0d0f] modal-panel shadow-2xl max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-white/[0.06] px-6 py-4">
           <h2 className="text-base font-semibold text-white">
@@ -118,22 +128,12 @@ export default function PipelineEditor({ pipeline, composeNames, onClose, onSave
 
             {/* Steps */}
             <div>
-              <div className="mb-2 flex items-center justify-between">
-                <label className="text-xs font-medium text-white/50">Steps</label>
-                <button
-                  type="button"
-                  onClick={() => setSteps(prev => [...prev, emptyStep()])}
-                  className="flex items-center gap-1 rounded-lg border border-teal-500/20 bg-teal-500/10 px-2.5 py-1 text-xs font-medium text-teal-400 transition hover:border-teal-400/35 hover:bg-teal-500/20"
-                >
-                  <Plus className="h-3 w-3" />
-                  Add step
-                </button>
-              </div>
-
+              <label className="mb-2 block text-xs font-medium text-white/50">Steps</label>
               <div className="space-y-3">
                 {steps.map((step, i) => (
                   <StepEditor
                     key={i}
+                    ref={el => { stepRefs.current[i] = el }}
                     index={i}
                     step={step}
                     total={steps.length}
@@ -144,6 +144,14 @@ export default function PipelineEditor({ pipeline, composeNames, onClose, onSave
                     onRemove={() => removeStep(i)}
                   />
                 ))}
+                <button
+                  type="button"
+                  onClick={addStep}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-teal-500/30 bg-teal-500/[0.06] py-3 text-xs font-medium text-teal-400 transition hover:border-teal-400/50 hover:bg-teal-500/10"
+                >
+                  <Plus className="h-3 w-3" />
+                  Add step
+                </button>
               </div>
             </div>
 
@@ -253,7 +261,8 @@ interface StepEditorProps {
   onRemove: () => void
 }
 
-function StepEditor({ index, step, total, composeNames, onUpdate, onMoveUp, onMoveDown, onRemove }: StepEditorProps) {
+const StepEditor = React.forwardRef<HTMLDivElement, StepEditorProps>(
+function StepEditor({ index, step, total, composeNames, onUpdate, onMoveUp, onMoveDown, onRemove }, ref) {
   const waitOptions: { value: WaitMode; label: string; icon: React.ReactNode; color: string }[] = [
     { value: 'services_running', label: 'Wait until services are running', icon: <Activity className="h-3.5 w-3.5" />, color: 'text-emerald-400' },
     { value: 'immediately',      label: 'Continue immediately',            icon: <Zap className="h-3.5 w-3.5" />,      color: 'text-amber-400' },
@@ -268,7 +277,7 @@ function StepEditor({ index, step, total, composeNames, onUpdate, onMoveUp, onMo
   }
 
   return (
-    <div className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-4 space-y-3">
+    <div ref={ref} className="rounded-xl border border-white/[0.07] bg-white/[0.02] p-4 space-y-3">
       {/* Step header */}
       <div className="flex items-center gap-2">
         <span className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-teal-500/15 text-[10px] font-bold text-teal-400">
@@ -379,4 +388,4 @@ function StepEditor({ index, step, total, composeNames, onUpdate, onMoveUp, onMo
       </div>
     </div>
   )
-}
+})

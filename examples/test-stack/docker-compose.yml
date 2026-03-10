@@ -1,16 +1,16 @@
-name: ctopia-test
+name: test-stack
 
 services:
   web:
     image: nginx:alpine
     ports:
-      - "8081:80"
+      - "8083:80"
     restart: unless-stopped
 
   cache:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "6380:6379"
     restart: unless-stopped
 
   db:
@@ -20,12 +20,12 @@ services:
       POSTGRES_DB: testdb
       POSTGRES_USER: test
     ports:
-      - "5432:5432"
+      - "5433:5432"
     restart: unless-stopped
 
   echo:
     image: hashicorp/http-echo
     command: ["-text=hello from ctopia"]
     ports:
-      - "8082:5678"
+      - "8084:5678"
     restart: unless-stopped

@@ -21,7 +21,7 @@ jobs:
 
       - name: Enable auto-merge (patch and minor only, non-actions)
         if: |
-          !startsWith(steps.metadata.outputs.dependency-names, 'actions/') &&
+          steps.metadata.outputs.package-ecosystem != 'github_actions' &&
           steps.metadata.outputs.update-type != 'version-update:semver-major'
         run: gh pr merge --auto --squash "$PR_URL"
         env:
